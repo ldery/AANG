@@ -35,8 +35,8 @@ def mask_tokens(inputs, tokenizer, proba, tform):
 	probability_matrix = get_probability_matrix(proba, labels, tokenizer)
 	masked_indices = torch.bernoulli(probability_matrix).bool()
 	labels[~masked_indices] = -100	# We only compute loss on masked tokens
-	
-	if tform == 'BERT':
+
+	if (tform == 'BERT') or (tform == 'Mask'):
 		# 80% of the time, we replace masked input tokens with tokenizer.mask_token ([MASK])
 		indices_replaced = torch.bernoulli(torch.full(labels.shape, 0.8)).bool() & masked_indices
 		inputs[indices_replaced] = tokenizer.convert_tokens_to_ids(tokenizer.mask_token)
@@ -45,40 +45,36 @@ def mask_tokens(inputs, tokenizer, proba, tform):
 		indices_random = torch.bernoulli(torch.full(labels.shape, 0.5)).bool() & masked_indices & ~indices_replaced
 		random_words = torch.randint(len(tokenizer), labels.shape, dtype=torch.long)
 		inputs[indices_random] = random_words[indices_random]
-
-		# The rest of the time (10% of the time) we keep the masked input tokens unchanged
-		return inputs, labels, masked_indices
-	elif tform == 'Mask':
-		inputs[masked_indices] = tokenizer.convert_tokens_to_ids(tokenizer.mask_token)
-		# 10% of all corrupted tokens are randomly replaced.
-		random_words = torch.randint(len(tokenizer), labels.shape, dtype=torch.long)
-		selected = torch.bernoulli(get_probability_matrix(0.05, labels, tokenizer)).bool()
-		selected = selected ^ (selected & masked_indices)
-		inputs[selected] = random_words[selected]
 	elif tform == 'Replace':
+		# 80% of the time, we replace masked input tokens with random word
 		random_words = torch.randint(len(tokenizer), labels.shape, dtype=torch.long)
-		inputs[masked_indices] = random_words[masked_indices]
+		random_replaced = torch.bernoulli(torch.full(labels.shape, 0.8)).bool() & masked_indices
+		inputs[random_replaced] = random_words[random_replaced]
 		
-		# 10% of all corrupted tokens are masked replaced.
-		selected = torch.bernoulli(get_probability_matrix(0.05, labels, tokenizer)).bool()
-		selected = selected ^ (selected & masked_indices)
-		inputs[selected] = tokenizer.convert_tokens_to_ids(tokenizer.mask_token)
+		# 10% of all corrupted tokens are replaced with [MASK].
+		indices_mask = torch.bernoulli(torch.full(labels.shape, 0.5)).bool() & masked_indices & ~random_replaced
+		inputs[indices_mask] = tokenizer.convert_tokens_to_ids(tokenizer.mask_token)
 	elif tform == 'None':
-		# 10% of all corrupted tokens are random-word replaced.
-		selected = torch.bernoulli(get_probability_matrix(0.05, labels, tokenizer)).bool()
-		selected = selected ^ (selected & masked_indices)
+		# 10% of all corrupted tokens are mask replaced.
+		indices_mask = torch.bernoulli(torch.full(labels.shape, 0.1)).bool() & masked_indices
+		inputs[indices_mask] = tokenizer.convert_tokens_to_ids(tokenizer.mask_token)
+		
+		# 10% of all corrupted tokens are random replaced.
+		indices_random = torch.bernoulli(torch.full(labels.shape, 0.11)).bool() & masked_indices & ~indices_mask
 		random_words = torch.randint(len(tokenizer), labels.shape, dtype=torch.long)
-		inputs[selected] = random_words[selected]
-		
-		# 10% of all corrupted tokens are masked replaced.
-		old_selected = masked_indices | selected
-		selected = torch.bernoulli(get_probability_matrix(0.05, labels, tokenizer)).bool()
-		selected = selected ^ (selected & old_selected)
-		inputs[selected] = tokenizer.convert_tokens_to_ids(tokenizer.mask_token)
-		
-		return inputs, labels, masked_indices
+		inputs[indices_random] = random_words[indices_random]
 	else:
 		raise ValueError('Transform not implemented Yet : {}'.format(tform_type))
+
+# 	if tform == 'Mask':
+# 		inputs[masked_indices] = tokenizer.convert_tokens_to_ids(tokenizer.mask_token)
+# 	elif tform == 'Replace':
+# 		random_words = torch.randint(len(tokenizer), labels.shape, dtype=torch.long)
+# 		inputs[masked_indices] = random_words[masked_indices]
+# 	elif tform == 'None':
+# 		return inputs, labels, masked_indices
+# 	else:
+# 		raise ValueError('Transform not implemented Yet : {}'.format(tform_type))
 
 	return inputs, labels, masked_indices
 

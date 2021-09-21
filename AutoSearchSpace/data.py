@@ -6,8 +6,9 @@ import unicodedata
 import numpy as np
 from collections import Counter, defaultdict
 from data_utils import *
+import pdb
 
-from torch.utils.data import Dataset, DataLoader, RandomSampler, SequentialSampler
+from torch.utils.data import Dataset, DataLoader, RandomSampler, Sampler
 logger = logging.getLogger(__name__)
 
 OUT_PAD = -100
@@ -236,8 +237,13 @@ class DataTransformAndItr(object):
 			raise NotImplementedError('This output type [{}] has not been impemented yet'.format(output_type)) 
 		else:
 			raise ValueError('Illegal value for output transform : {}'.format(self.output_type))
+	
+	def get_generator(self, seed_):
+		generator = torch.Generator()
+		generator.manual_seed(seed_)
+		return generator
 
-	def get_iterator(self, loss_config, shuffle=True, local_rank=-1):
+	def get_iterator(self, loss_config, iter_, shuffle=True, local_rank=-1):
 		ds_id = loss_config[0] # The first stage in the loss config is the dataset-id
 		# Dataset Obtained
 		ds = self.dataOpts.get_dataset(ds_id)
@@ -258,6 +264,7 @@ class DataTransformAndItr(object):
 			inputs, labels, _ = self.apply_in_tform(inputs, in_tform)
 			return self.apply_out_tform(out_tform, ds, inputs, labels, examples, all_egs, special_tok_mask)
 
+		# , generator=self.get_generator(iter_)
 		sampler = RandomSampler(ds) if local_rank == -1 else DistributedSampler(ds)
 		dataloader = DataLoader(
 			ds, sampler=sampler, batch_size=self.train_batch_size, collate_fn=collate

@@ -104,6 +104,7 @@ def add_modelling_options(parser):
 	parser.add_argument("--classf_ft_lr", type=float, default=2e-6, help="Learning rate of classifier for finetuning")
 	parser.add_argument("--dev_fit_iters", type=int, default=10, help="Number of iterations to run fitting dev head")
 	parser.add_argument("--share-output-heads", action='store_true')
+	parser.add_argument("--clip-joint-grads", action='store_true')
 	return parser
 
 import pdb
@@ -186,7 +187,7 @@ class ModelWithAuxTasks(AutoModel):
 		self.share_output_heads = share_output_heads
 		self.setup_heads(searchOpts, dropout, embedding_dim, num_layers, ff_multiplier)
 		self.batch_sz = batch_sz
-		self.max_norm = 1.0
+		self.max_norm = max_norm
 		self.max_seq_len = max_seq_len
 		self.grad_accum_factor = grad_accum_factor
 		# Save grads of auxiliary losses
@@ -645,8 +646,9 @@ class ModelWithAuxTasks(AutoModel):
 		else:
 			this_weight = prim_weight.item()
 			raw_weight = raw_prim_weight.item()
-
-		weighted_loss = (loss_ * this_weight) / self.grad_accum_factor
+		
+		normalizer = self.grad_accum_factor * max(self.max_norm, task_norm)
+		weighted_loss = (loss_ * this_weight) / normalizer
 		weighted_loss.backward()
 		self.config_losses_and_weights[human_readable].append((loss_.item(), this_weight, raw_weight))
 

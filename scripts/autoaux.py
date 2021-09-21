@@ -55,9 +55,10 @@ from transformers import (
 )
 
 import sys
-PATH = os.path.join(os.getcwd(), "AutoSearchSpace/")
 
+PATH = os.path.join(os.getcwd(), "AutoSearchSpace/")
 sys.path.insert(1, PATH)
+
 
 from config import add_config_args, Config
 from data import add_data_args, DataOptions, DataTransformAndItr
@@ -181,17 +182,17 @@ def auto_auxiliary(args):
 								)
 
 	# enumerate the valid loss configs and get iterators for each loss type
-	data_iterators = {}
-	max_dataset_len = -1
-	for aux_loss_config in searchOpts.get_valid_configs():
-		data_iterators[aux_loss_config] = dtform_and_itr.get_iterator(aux_loss_config)
-		dataset_len = len(data_iterators[aux_loss_config])
-		max_dataset_len = max(max_dataset_len, dataset_len)
+	def set_data_iterators(iter_):
+		data_itrs = {}
+		max_len = -1
+		for aux_loss_config in searchOpts.get_valid_configs():
+			data_itrs[aux_loss_config] = dtform_and_itr.get_iterator(aux_loss_config, iter_)
+			dataset_len = len(data_itrs[aux_loss_config])
+			max_len = max(max_len, dataset_len)
+		return data_itrs, max_len
 
-	
+	data_iterators, max_dataset_len = set_data_iterators(0)
 	representation_tform = RepTransform(autoloss_config.get_stage(2))
-
-	# Todo [ldery] - need to figure out what to do in the case of distributed training
 
 	# Instantiate the model
 	if args.config_name:
@@ -333,7 +334,9 @@ def auto_auxiliary(args):
 
 			# Sample a subset of the valid configurations
 			sample_configs = searchOpts.sample_configurations(args.num_config_samples)
+			# Currently a very hacky way of ensuring samples are the same. Will need to fix for long term
 			aggregate_data = {}
+			num_resets = 0
 			for config_ in sample_configs:
 				# Get the iterator
 				iterator = data_iterators[config_]
@@ -342,20 +345,23 @@ def auto_auxiliary(args):
 					batch_ = next(iterator)
 				except:
 					# Need to re-set the iterator
-					data_iterators[config_] = dtform_and_itr.get_iterator(config_)
+					data_iterators[config_] = dtform_and_itr.get_iterator(config_, epoch + 1)
+					num_resets += 1
 					batch_ = next(data_iterators[config_])
 				# Get the padding mask
 				pad_mask = 1.0 - ((batch_['input']).eq(tokenizer.pad_token_id)).float()
 				batch_['rep_mask'] = representation_tform.get_rep_tform(batch_['input'].shape, pad_mask,config_[2])
 				aggregate_data[config_] = batch_
+			assert num_resets == 0 or num_resets == len(sample_configs), 'There will be a mismatch in terms of which data is seen'
 
 			# This does an automatic filling of the gradients. Accumulates the gradients
 			wrapper_model.get_grads_with_auxiliaries(aggregate_data, searchOpts)
 			if (iter_ + 1) % args.gradient_accumulation_steps == 0:
 				# We have accumulated enough gradient and can now do a step
-				torch.nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
-				torch.nn.utils.clip_grad_norm_(wrapper_model.get_classifier_params(), args.max_grad_norm)
-				
+				if args.clip_joint_grads:
+					torch.nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
+					torch.nn.utils.clip_grad_norm_(wrapper_model.get_classifier_params(), args.max_grad_norm)
+
 				# Step on the head parameters
 				classifier_optim.step()
 				if classifier_scheduler is not None:
