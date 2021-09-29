@@ -29,7 +29,7 @@ def get_generator(seed_):
 	return generator
 
 
-def mask_tokens(inputs, tokenizer, proba, tform):
+def mask_tokens(inputs, tokenizer, proba, tform, op_probs):
 	""" Prepare masked tokens inputs/labels for masked language modeling: 80% MASK, 10% random, 10% original. """
 
 	if tokenizer.mask_token is None:
@@ -43,11 +43,12 @@ def mask_tokens(inputs, tokenizer, proba, tform):
 	masked_indices = torch.bernoulli(probability_matrix, generator=generator).bool()
 	labels[~masked_indices] = -100	# We only compute loss on masked tokens
 
-
-	indices_replaced = torch.bernoulli(torch.full(labels.shape, 0.34), generator=generator).bool() & masked_indices
+	assert op_probs is not None, 'The probability of each operation has to be given'
+	indices_replaced = torch.bernoulli(torch.full(labels.shape, op_probs['Mask']), generator=generator).bool() & masked_indices
 	inputs[indices_replaced] = tokenizer.convert_tokens_to_ids(tokenizer.mask_token)
 
-	indices_random = torch.bernoulli(torch.full(labels.shape, 0.5), generator=generator).bool() & masked_indices & ~indices_replaced
+	random_proba = op_probs['Replace'] / (op_probs['Replace'] + op_probs['None'])
+	indices_random = torch.bernoulli(torch.full(labels.shape, random_proba), generator=generator).bool() & masked_indices & ~indices_replaced
 	random_words = torch.randint(len(tokenizer), labels.shape, generator=generator, dtype=torch.long)
 	inputs[indices_random] = random_words[indices_random]
 
@@ -61,7 +62,6 @@ def mask_tokens(inputs, tokenizer, proba, tform):
 	else:
 		raise ValueError('Transform not implemented Yet : {}'.format(tform_type))
 	return inputs, labels, masked_indices
-
 
 # if (tform == 'BERT') or (tform == 'Mask'):
 # 	# 80% of the time, we replace masked input tokens with tokenizer.mask_token ([MASK])

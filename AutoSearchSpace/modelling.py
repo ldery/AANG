@@ -531,7 +531,7 @@ class ModelWithAuxTasks(AutoModel):
 	def close_writer(self):
 		self.tboard_writer.close()
 
-	def push_to_tensorboard(self, step_):
+	def push_to_tensorboard(self, step_, tform_probas=None):
 		# push the config losses and their weights
 		for k, v in self.dev_head_perfs.items():
 			self.tboard_writer.add_scalar('dev.head.perfs.{}'.format(k), v[-1], step_)
@@ -559,9 +559,8 @@ class ModelWithAuxTasks(AutoModel):
 		self.tboard_writer.add_scalars('aux.cosines', aux_cosines, step_)
 		self.tboard_writer.add_scalars('aux.losses', losses_, step_)
 		self.tboard_writer.add_scalars('aux.weights', weights_, step_)
-# 		print("This is the current set of weights : \n")
-# 		print(weights_)
-# 		print("\n")
+		if tform_probas is not None:
+			self.tboard_writer.add_scalars('aux.token_sampling_opts', tform_probas, step_)
 		self.tboard_writer.add_scalars('aux.raw_weights', raw_weights_, step_)
 		self.tboard_writer.add_scalars('aux.lossxweights', prods_, step_)
 		self.tboard_writer.add_scalars('aux.gradnorms', norms_, step_)

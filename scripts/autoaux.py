@@ -186,7 +186,7 @@ def auto_auxiliary(args):
 		data_itrs = {}
 		max_len = -1
 		for aux_loss_config in searchOpts.get_valid_configs():
-			data_itrs[aux_loss_config] = dtform_and_itr.get_iterator(aux_loss_config, iter_)
+			data_itrs[aux_loss_config] = dtform_and_itr.get_iterator(aux_loss_config, iter_, searchOpts.get_transform_weights)
 			dataset_len = len(data_itrs[aux_loss_config])
 			max_len = max(max_len, dataset_len)
 		return data_itrs, max_len
@@ -345,7 +345,7 @@ def auto_auxiliary(args):
 					batch_ = next(iterator)
 				except:
 					# Need to re-set the iterator
-					data_iterators[config_] = dtform_and_itr.get_iterator(config_, epoch + 1)
+					data_iterators[config_] = dtform_and_itr.get_iterator(config_, epoch + 1, searchOpts.get_transform_weights)
 					num_resets += 1
 					batch_ = next(data_iterators[config_])
 				# Get the padding mask
@@ -382,7 +382,7 @@ def auto_auxiliary(args):
 				torch.cuda.empty_cache()
 				
 				# ask the wrapper to track the stats + tfsummarywriter so we can see in real time
-				wrapper_model.push_to_tensorboard(global_step)
+				wrapper_model.push_to_tensorboard(global_step, tform_probas=searchOpts.get_transform_weights())
 
 				# This saves only the model base
 				if args.save_steps > 0 and global_step % args.save_steps == 0:

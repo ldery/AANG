@@ -98,10 +98,51 @@ class SearchOptions(object):
 						else:
 							self.valid_configurations.append((i, j, k, l))
 
-
 	def get_weighttensor_nograd(self, softmax=True):
 		with torch.no_grad():
 			return self.get_weighttensor_wgrad(softmax=softmax)
+	
+	def get_transform_weights(self):
+		transform_stage = 1
+		stage_name, ids_ = self.config.get_stage_w_name(transform_stage)
+		this_weights = self.weights[stage_name]
+		op_probas = {}
+		with torch.no_grad():
+			sq_ = torch.squeeze(this_weights.clone().detach())
+			# Adding an initial bias here to represent base BERT starting point
+			sq_ = torch.tensor([0.0, 0.0, 0.2079], device=sq_.device) # Bias for softmax with 0.0 giving bert
+			temperature = 0.1
+			sq_ = F.softmax(sq_ / temperature, dim=-1)
+			for op_id, op_ in ids_.items():
+				op_probas[op_] = sq_[op_id].item()
+		return op_probas
+
+# transform_stage = 1
+# stage_name, ids_ = self.config.get_stage_w_name(transform_stage)
+# this_weights = self.weights[stage_name]
+# op_probas = {}
+# with torch.no_grad():
+# 	sq_ = torch.squeeze(this_weights.clone().detach())
+# # 			print('Before Adding :')
+# # 			print(sq_.cpu().numpy())
+# # 			print(F.softmax(sq_, dim=-1).cpu().numpy())
+# 	# Adding an initial bias here to represent base BERT starting point
+# 	bias = torch.tensor([0.0, 0.0, 0.2079], device=sq_.device) # Bias for softmax with 0.0 giving bert
+# 	sq_ += bias
+# 	temperature = 0.1
+# 	sq_ = F.softmax(sq_ / temperature, dim=-1)
+# # 			print('After Adding : ')
+# # 			print(sq_.cpu().numpy())
+# 	sq_ = torch.clamp(sq_, min=0.01, max=0.98)
+# 	sq_ = sq_ / sq_.sum()
+# 	if torch.isnan(sq_).sum() > 0:
+# 		pdb.set_trace()
+# # 			print('After Normalizing : ')
+# # 			print(sq_.cpu().numpy())
+# # 			print('\n\n')
+# 	for op_id, op_ in ids_.items():
+# 		op_probas[op_] = sq_[op_id].item()
+
 
 	# Todo [ldery] - need to test this effectively
 	def get_weighttensor_wgrad(self, softmax=True):

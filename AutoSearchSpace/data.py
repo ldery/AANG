@@ -189,8 +189,8 @@ class DataTransformAndItr(object):
 		self.proba = args.mlm_probability
 		self.block_size = args.block_size
 
-	def apply_in_tform(self, sent, in_tform_type):
-		return mask_tokens(sent, self.dataOpts.tokenizer, self.proba, in_tform_type)
+	def apply_in_tform(self, sent, in_tform_type, token_probas):
+		return mask_tokens(sent, self.dataOpts.tokenizer, self.proba, in_tform_type, token_probas)
 
 	def apply_out_tform(
 							self, output_type, ds, padded_sent, tformed_sent,
@@ -238,7 +238,7 @@ class DataTransformAndItr(object):
 		else:
 			raise ValueError('Illegal value for output transform : {}'.format(self.output_type))
 
-	def get_iterator(self, loss_config, iter_, shuffle=True, local_rank=-1):
+	def get_iterator(self, loss_config, iter_, token_proba_gen, shuffle=True, local_rank=-1):
 		ds_id = loss_config[0] # The first stage in the loss config is the dataset-id
 		# Dataset Obtained
 		ds = self.dataOpts.get_dataset(ds_id)
@@ -256,7 +256,8 @@ class DataTransformAndItr(object):
 			special_tok_mask = out["special_tokens_mask"]
 			inputs = pad_sequence(all_egs, self.dataOpts.tokenizer.pad_token_id)
 			# need to do the outputs
-			inputs, labels, _ = self.apply_in_tform(inputs, in_tform)
+			token_probas = token_proba_gen()
+			inputs, labels, _ = self.apply_in_tform(inputs, in_tform, token_probas)
 			return self.apply_out_tform(out_tform, ds, inputs, labels, examples, all_egs, special_tok_mask)
 
 		sampler = RandomSampler(ds, generator=get_generator(iter_)) if local_rank == -1 else DistributedSampler(ds)
