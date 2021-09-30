@@ -191,7 +191,7 @@ class BasicClassifierWithF1(Model):
 		return metric_dict
 
 
-@Model.register("basic_sequence_classifier_with_f1")
+@Model.register("basic_sequence_tagger_with_f1")
 class BasicSequenceTagger(BasicClassifierWithF1):
 	def __init__(
 			self,

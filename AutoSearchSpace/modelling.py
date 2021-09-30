@@ -32,6 +32,8 @@ try:
 except ImportError:
 	from tensorboardX import SummaryWriter
 
+EPS = 1e-8
+
 # Calculates the dot products of 2 gradient vectors
 def dot_prod(g1, g2, ppdp=None):
 	total = 0.0
@@ -626,14 +628,15 @@ class ModelWithAuxTasks(AutoModel):
 			if isinstance(v, torch.Tensor):
 				batch[k] = v.cuda()
 		input_, output_, rep_mask = batch['input'], batch['output'], batch['rep_mask']
-		loss_ = this_head(input_, output_, attn_mask=rep_mask)['loss']
+		model_out = this_head(input_, output_, attn_mask=rep_mask)
+		loss_, loss_full = model_out['loss'],  model_out['loss_full']
 		gradients = torch.autograd.grad(loss_, this_head.parameters(), allow_unused=True, retain_graph=True)
 
 		this_grads = gradients[:self.body_params_end]
 		task_norm = calc_norm(this_grads)
 		per_param_dp = []
 		cos_sim = dot_prod(dev_head_grads, this_grads, ppdp=per_param_dp)
-		cos_sim = (cos_sim / (dev_norm * task_norm)) 
+		cos_sim = (cos_sim / (dev_norm * task_norm + EPS)) 
 		self.weight_stats[human_readable].append((dev_norm.item(), task_norm.item(), cos_sim))
 		cos_sim = cos_sim / self.grad_accum_factor
 		self.per_param_dp[human_readable].append(per_param_dp)
@@ -645,10 +648,19 @@ class ModelWithAuxTasks(AutoModel):
 		else:
 			this_weight = prim_weight.item()
 			raw_weight = raw_prim_weight.item()
-		
-		normalizer = self.grad_accum_factor * max(self.max_norm, task_norm)
-		weighted_loss = (loss_ * this_weight) / normalizer
-		weighted_loss.backward()
+
+		if is_prim:
+			normalizer = self.grad_accum_factor * max(self.max_norm, task_norm) # Limit effective norm to a maximum
+			weighted_loss = this_weight * loss_ / normalizer
+		else:
+			num_tokens =  batch['num_tokens']
+			norm_ =  max(self.max_norm, task_norm * (loss_full).nonzero().sum() / num_tokens) # Get the effective task norm and limit it to a maximum norm
+			normalizer = (self.grad_accum_factor * norm_) * (num_tokens)
+			weighted_loss = (1.0 - prim_weight.item()) * (loss_full.sum() / normalizer)
+		if torch.isnan(weighted_loss):
+			assert (output > 0).sum() == 0, 'This means no example was chosen due to its low likelihood'
+		else:
+			weighted_loss.backward()
 		self.config_losses_and_weights[human_readable].append((loss_.item(), this_weight, raw_weight))
 
 

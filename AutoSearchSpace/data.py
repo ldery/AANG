@@ -190,20 +190,25 @@ class DataTransformAndItr(object):
 		self.block_size = args.block_size
 
 	def apply_in_tform(self, sent, in_tform_type, token_probas):
-		return mask_tokens(sent, self.dataOpts.tokenizer, self.proba, in_tform_type, token_probas)
+		try:
+			return mask_tokens(sent, self.dataOpts.tokenizer, self.proba, in_tform_type, token_probas)
+		except:
+			pdb.set_trace()
+			result = mask_tokens(sent, self.dataOpts.tokenizer, self.proba, in_tform_type, token_probas)
+			return result
 
 	def apply_out_tform(
 							self, output_type, ds, padded_sent, tformed_sent,
-							orig_samples, tokenID_samples, special_tok_mask
+							orig_samples, tokenID_samples, special_tok_mask, num_tokens
 						):
 		if output_type == 'DENOISE':
 			assert padded_sent.shape == tformed_sent.shape, 'Invalid Shapes. Input must have same shape as output'
-			return {'input': padded_sent, 'output': tformed_sent}
+			return {'input': padded_sent, 'output': tformed_sent, 'num_tokens': num_tokens}
 		elif output_type == 'TFIDF':
 			tfidf_sent = [ds.gettfidfs(x['idx'], special_tok_mask[id_]) for id_, x in enumerate(orig_samples)]
 			tfidf_sent = pad_sequence(tfidf_sent, OUT_PAD)
 			assert padded_sent.shape == tfidf_sent.shape, 'Invalid Shapes. Input must have same shape as output'
-			return {'input': padded_sent, 'output': tfidf_sent}
+			return {'input': padded_sent, 'output': tfidf_sent, 'num_tokens': num_tokens}
 		elif output_type == 'TF':
 			tf_sent = [ds.gettfs(x['idx'], special_tok_mask[id_]) for id_, x in enumerate(orig_samples)]
 			tf_sent = pad_sequence(tf_sent, OUT_PAD)
@@ -257,8 +262,9 @@ class DataTransformAndItr(object):
 			inputs = pad_sequence(all_egs, self.dataOpts.tokenizer.pad_token_id)
 			# need to do the outputs
 			token_probas = token_proba_gen()
-			inputs, labels, _ = self.apply_in_tform(inputs, in_tform, token_probas)
-			return self.apply_out_tform(out_tform, ds, inputs, labels, examples, all_egs, special_tok_mask)
+			inputs, labels, mask_indices = self.apply_in_tform(inputs, in_tform, token_probas)
+			num_tokens = mask_indices.sum().item()
+			return self.apply_out_tform(out_tform, ds, inputs, labels, examples, all_egs, special_tok_mask, num_tokens)
 
 		sampler = RandomSampler(ds, generator=get_generator(iter_)) if local_rank == -1 else DistributedSampler(ds)
 		dataloader = DataLoader(

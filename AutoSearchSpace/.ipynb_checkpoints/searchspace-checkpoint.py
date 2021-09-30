@@ -10,6 +10,7 @@ def add_searchspace_args(parser):
 	parser.add_argument('-use-factored-model', action='store_true')
 	parser.add_argument('-step-meta-every', type=int, default=1)
 	parser.add_argument('-use-EG', action='store_true')
+	parser.add_argument('-update-token-sampling', action='store_true')
 
 
 def create_tensor(shape, init=0.0, requires_grad=True, is_cuda=True):
@@ -22,7 +23,7 @@ def create_tensor(shape, init=0.0, requires_grad=True, is_cuda=True):
 
 import pdb
 class SearchOptions(object):
-	def __init__(self, config, weight_lr, use_EG= False, step_every=1, use_factored_model=True, is_cuda=True):
+	def __init__(self, config, weight_lr, use_EG= False, step_every=1, use_factored_model=True, is_cuda=True, update_token_sampling=False):
 		self.config = config  # Store in case
 		self.weight_lr = weight_lr
 		self.weights = {}
@@ -61,6 +62,7 @@ class SearchOptions(object):
 		self.config_upstream_grad = create_tensor(all_dims,init=int(use_EG), requires_grad=False, is_cuda=is_cuda)
 		self.prim_upstream_grad = create_tensor((1,), init=int(use_EG), requires_grad=False, is_cuda=is_cuda)
 		self.use_EG = use_EG
+		self.update_token_sampling = update_token_sampling
 
 
 	def get_valid_configs(self):
@@ -110,39 +112,18 @@ class SearchOptions(object):
 		with torch.no_grad():
 			sq_ = torch.squeeze(this_weights.clone().detach())
 			# Adding an initial bias here to represent base BERT starting point
-			sq_ = torch.tensor([0.0, 0.0, 0.2079], device=sq_.device) # Bias for softmax with 0.0 giving bert
+			bias = torch.tensor([0.0, 0.0, 0.2079], device=sq_.device) # Bias for softmax with 0.0 giving bert
+			sq_ = sq_ + bias if self.update_token_sampling else bias
 			temperature = 0.1
 			sq_ = F.softmax(sq_ / temperature, dim=-1)
+			old_sq_ = sq_.clone().detach()
+			sq_ = torch.clamp(sq_, min=0.05, max=0.95)
+			sq_ = sq_.div_(sq_.sum())
+			if torch.isnan(sq_).sum() > 0:
+				assert False, 'There is still a nan issue going on and this should not happen'
 			for op_id, op_ in ids_.items():
 				op_probas[op_] = sq_[op_id].item()
 		return op_probas
-
-# transform_stage = 1
-# stage_name, ids_ = self.config.get_stage_w_name(transform_stage)
-# this_weights = self.weights[stage_name]
-# op_probas = {}
-# with torch.no_grad():
-# 	sq_ = torch.squeeze(this_weights.clone().detach())
-# # 			print('Before Adding :')
-# # 			print(sq_.cpu().numpy())
-# # 			print(F.softmax(sq_, dim=-1).cpu().numpy())
-# 	# Adding an initial bias here to represent base BERT starting point
-# 	bias = torch.tensor([0.0, 0.0, 0.2079], device=sq_.device) # Bias for softmax with 0.0 giving bert
-# 	sq_ += bias
-# 	temperature = 0.1
-# 	sq_ = F.softmax(sq_ / temperature, dim=-1)
-# # 			print('After Adding : ')
-# # 			print(sq_.cpu().numpy())
-# 	sq_ = torch.clamp(sq_, min=0.01, max=0.98)
-# 	sq_ = sq_ / sq_.sum()
-# 	if torch.isnan(sq_).sum() > 0:
-# 		pdb.set_trace()
-# # 			print('After Normalizing : ')
-# # 			print(sq_.cpu().numpy())
-# # 			print('\n\n')
-# 	for op_id, op_ in ids_.items():
-# 		op_probas[op_] = sq_[op_id].item()
-
 
 	# Todo [ldery] - need to test this effectively
 	def get_weighttensor_wgrad(self, softmax=True):
