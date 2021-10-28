@@ -221,7 +221,8 @@ def auto_auxiliary(args):
 										max_seq_len=args.classf_max_seq_len, dropout=args.classifier_dropout,
 										save_path=os.path.join(args.output_dir, 'modelWAuxTasks.pth'),
 										grad_accum_factor=args.gradient_accumulation_steps, batch_sz=args.classf_iter_batchsz,
-										dev_batch_sz=args.dev_batch_sz, share_output_heads=args.share_output_heads
+										dev_batch_sz=args.dev_batch_sz, share_output_heads=args.share_output_heads,
+										max_norm=args.max_grad_norm
 					)
 	model.to(args.device)
 	wrapper_model.to(args.device)
@@ -330,14 +331,7 @@ def auto_auxiliary(args):
 			# This does an automatic filling of the gradients. Accumulates the gradients
 			wrapper_model.get_grads_with_auxiliaries(aggregate_data, searchOpts)
 			if (iter_ + 1) % args.gradient_accumulation_steps == 0:
-				# We have accumulated enough gradient and can now do a step
-				torch.nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
-				if args.individ_head_norm:
-					for head_name in wrapper_model.head_list:
-						torch.nn.utils.clip_grad_norm_(wrapper_model.get_classifier_params(keys=[head_name]), args.head_max_grad_norm)
-				else:
-					torch.nn.utils.clip_grad_norm_(wrapper_model.get_classifier_params(), args.max_grad_norm)
-				
+
 				# Step on the head parameters
 				classifier_optim.step()
 				if classifier_scheduler is not None:
@@ -529,9 +523,6 @@ def main():
 		default=1,
 		help="Number of updates steps to accumulate before performing a backward/update pass.",
 	)
-
-	parser.add_argument("--individ_head_norm", action='store_true', help="Normalize the heads individually")
-	parser.add_argument("--head_max_grad_norm", default=1.0, type=float, help="Max gradient norm.")
 
 	parser.add_argument("--base_wd", type=float, default=0.01)
 	parser.add_argument("--learning_rate", default=5e-5, type=float, help="The initial learning rate for Adam.")
