@@ -685,6 +685,8 @@ class ModelWithAuxTasks(AutoModel):
 		aux_norm = calc_norm(sum_of_aux_grads) + EPS
 		cos_sim = dot_prod(dev_head_grads, sum_of_aux_grads)
 		cos_sim = (cos_sim / (dev_norm * aux_norm)) / self.grad_accum_factor
+		if torch.isnan(torch.tensor([cos_sim])):
+			pdb.set_trace()
 		searchOpts.update_grad('auxiliary', -cos_sim)
 		self.weight_stats['auxiliary'].append((dev_norm.item(), (aux_norm.item() / all_aux_pts), cos_sim))
 		# Use 0.0 as the intermediate auxiliary loss. You can just look at the total
@@ -728,6 +730,8 @@ class ModelWithAuxTasks(AutoModel):
 		cos_sim = cos_sim / self.grad_accum_factor
 		self.per_param_dp[task_desc].append(per_param_dp)
 		searchOpts.update_grad(loss_config, -cos_sim)
+		if torch.isnan(torch.tensor([cos_sim])):
+			pdb.set_trace()
 
 		return gradients
 

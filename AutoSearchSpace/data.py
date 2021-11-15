@@ -287,6 +287,7 @@ class DataTransformAndItr(object):
 				out_tforms = np.unique([config[-1] for config in this_ds_configs])
 				is_sent_config = np.any([searchOpts.config.is_dot_prod(x) for x in out_tforms])
 				examples = ds.get_samples(n_ds_samples, is_sent_config=is_sent_config)
+
 				token_tforms = np.unique([config[1] for config in this_ds_configs])
 				probas = searchOpts.get_relative_probas(1, token_tforms)
 				_, stage_map = searchOpts.config.get_stage_w_name(1)
