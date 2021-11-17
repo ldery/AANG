@@ -322,8 +322,6 @@ class BasicSentenceClassifier(BasicClassifierWithF1):
 		self._seq2vec_encoder = seq2vec_encoder
 		self._mae = MeanAbsoluteError()
 		self._loss = torch.nn.MSELoss(reduction='none')
-# 		self._accuracy = CategoricalAccuracy()
-# 		self._loss = torch.nn.CrossEntropyLoss(reduction='none')
 		if initializer is not None:
 			initializer(self)
 
@@ -357,32 +355,23 @@ class BasicSentenceClassifier(BasicClassifierWithF1):
 		assert n_batches % 2 == 0, 'There has to be an even number of inputs here'
 
 		logits = batch_cos_sim(tok_tformed, pooled_text).squeeze()
-		
-# 		diag_mask = torch.zeros_like(logits).masked_fill(torch.eye(n_batches, device=logits.device).bool(), float('-inf'))
-# 		logits += diag_mask
-
 
 		updated_labels = list(range(n_batches))
 		updated_labels = torch.tensor(updated_labels[(n_batches // 2):] + updated_labels[:(n_batches // 2)]).view(-1, 1)
 		new_labels = updated_labels.to(label.device)
 
-		# Update the labels to account for rows without any examples
-# 		label_mask = (label > 0).float().sum(dim=-1) == 0
-# 		new_labels = new_labels.masked_fill(label_mask, -100)
+
 		label_mask = 1.0 - ((label > 0).float().sum(dim=-1) == 0).float()
 		logits = label_mask * torch.gather(logits, 1, new_labels).squeeze()
 		label = torch.ones(len(logits), device=label_mask.device) * label_mask
 
 		output_dict = {}
 		if label is not None:
-			# Need to modify this to be more akin to regression loss
-# 			logits = logits.view(-1, logits.shape[-1])
-# 			label = new_labels.long().view(-1)
 			loss = self._loss(logits, label)
 
 			output_dict["loss_full"] = loss
 			output_dict["loss"] = loss.sum() / (len(loss.nonzero()) + EPS)
-# 			self._accuracy(logits, label)
+
 			self._mae(logits, label)
 		return output_dict
 	
