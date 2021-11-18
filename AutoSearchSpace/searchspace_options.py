@@ -19,6 +19,7 @@ VBASIC = {
 }
 VBASIC['out-space'] = [*VBASIC['out-token-space'], *VBASIC['out-sent-space']]
 
+
 VBASIC1 = {
 	'input-space' : ['Task'],
 	'input-tform-space': ['None', 'Replace', 'Mask'],
@@ -27,6 +28,12 @@ VBASIC1 = {
 	'out-sent-space': [],
 }
 VBASIC1['out-space'] = [*VBASIC1['out-token-space'], *VBASIC1['out-sent-space']]
+
+SUPERVISED = deepcopy(VBASIC1)
+SUPERVISED['input-space'].append('CITATION_INTENT')
+SUPERVISED['out-sup-space'] = ['CITATION_INTENT']
+SUPERVISED['out-space'] = [*SUPERVISED['out-sup-space'], *SUPERVISED['out-token-space'], *SUPERVISED['out-sent-space']]
+
 
 
 
@@ -78,6 +85,15 @@ ALL_SENT_CLASSF_OUTPUTS = {
 	'SCP' : 2
 }
 ALL_SENT_DOT_OUTPUTS = ['QT', 'FS']
+# ALL_SUPERVISED_OUTPUTS = ['MNLI', 'CITATION_INTENT', 'SCIIE', 'CHEMPROT']
+
+# NB - if the output space is supervised then the dataset name must be the same as the supervised set name
+ALL_SUPERVISED_OUTPUTS = {
+	'MNLI' : 3,
+	'CITATION_INTENT'  : 6,
+	'SCIIE': 7,
+	'CHEMPROT': 13,
+}
 
 def get_config(name):
 	config = None
@@ -93,6 +109,8 @@ def get_config(name):
 		config = VBASIC
 	elif name == 'vbasic1':
 		config = VBASIC1
+	elif name == 'supervised':
+		config = SUPERVISED
 	elif name == 'bert':
 		config = BERT
 	assert config is not None, 'Wrong Config name given : {}'.format(name)
@@ -105,13 +123,21 @@ def get_config_options(name):
 
 # Will need to expand this as more transforms are added
 def get_illegal_sets(config):
-	if len(config['out-sent-space']) == 0:
-		return []
-	rep_w_issues = set(['Left-To-Right', 'Right-To-Left', 'Random-Factorized'])
-	intersect = rep_w_issues.intersection(set(config['rep-tform-space']))
-	if len(intersect) == 0:
-		return []
-	illegal_pairs = [set([a, b]) for a in config['out-sent-space'] for b in intersect]
+	illegal_pairs = []
+	if len(config['out-sent-space']) != 0:
+		rep_w_issues = set(['Left-To-Right', 'Right-To-Left', 'Random-Factorized'])
+		intersect = rep_w_issues.intersection(set(config['rep-tform-space']))
+		if len(intersect) == 0:
+			return []
+		illegal_pairs = [set([a, b]) for a in config['out-sent-space'] for b in intersect]
+
+	if ('out-sup-space' in config) and (len(config['out-sup-space']) != 0):
+		rep_w_issues = set(['Left-To-Right', 'Right-To-Left'])
+		intersect = rep_w_issues.intersection(set(config['rep-tform-space']))
+		ill_rep = [set([a, b]) for a in config['out-sup-space'] for b in intersect]
+		ill_ds_out = [set([a, b]) for a in config['input-space'] for b in config['out-sup-space'] if a != b]
+		illegal_pairs.extend(ill_rep)
+		illegal_pairs.extend(ill_ds_out)
 	return illegal_pairs
 
 def test_valid_config_name():

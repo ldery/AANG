@@ -284,6 +284,11 @@ class ModelWithAuxTasks(AutoModel):
 				vocab = Vocabulary()
 				vocab.add_tokens_to_namespace(searchOpts.get_vocab(aux_loss_config[-1]))
 				self.setup_classifier(dropout, key_, vocab, embedding_dim, ff_multiplier, num_layers=1)
+			elif searchOpts.config.is_supervised(aux_loss_config[-1]):
+				vocab = Vocabulary()
+				vocab_tokens = searchOpts.config.get_vocab_supervised(aux_loss_config[-1])
+				vocab.add_tokens_to_namespace(vocab_tokens, namespace='labels')
+				self.setup_classifier(dropout, key_, vocab, embedding_dim, ff_multiplier, num_layers=num_layers)
 			else:
 				raise ValueErorr('Invalid aux_loss_config : ', aux_loss_config)
 			self.head_list.append(key_)
@@ -651,6 +656,11 @@ class ModelWithAuxTasks(AutoModel):
 				human_readable = searchOpts.get_config_human_readable(aux_loss_config)
 				task_id = ".".join([str(x) for x in aux_loss_config]) if not self.share_output_heads else str(aux_loss_config[-1])
 				batch['output'] = task_output.cuda()
+				
+				if searchOpts.config.get_name(3, aux_loss_config[-1]) == searchOpts.config.get_name(0, aux_loss_config[0]):
+					if  batch['input'].shape[0] !=  batch['output'].shape[0]:
+						print('There is a shape mis-match and this should not happen')
+						pdb.set_trace()
 				task_out, task_head = self.run_task(task_id, batch, embedded_text=embedded_text)
 
 				is_not_last = config_idx != (len(config_dict) - 1)
@@ -709,6 +719,7 @@ class ModelWithAuxTasks(AutoModel):
 		else:
 			model_out = this_head(input_, output_, attn_mask=rep_mask)
 		return model_out, this_head
+
 
 	# Todo [ldery] - you can either normalize on a per-task basis or normalize across all tasks.
 	# You should test out both

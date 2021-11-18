@@ -29,7 +29,7 @@ nconfigsamples=$5
 auxlr=$6 #1e-1
 soptlr=$7 #1e-1
 wfrac=0.06
-spconfig='vbasic'
+spconfig=$8 #'vbasic'
 
 
 for k in $(seq $start $end)

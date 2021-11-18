@@ -7,11 +7,12 @@ from searchspace_options import (
 	ALL_TOKEN_OUTPUTS,
 	ALL_SENT_CLASSF_OUTPUTS,
 	ALL_SENT_DOT_OUTPUTS,
-	ALL_TOKEN_CLASSF
+	ALL_TOKEN_CLASSF,
+	ALL_SUPERVISED_OUTPUTS,
 )
 
 def add_config_args(parser):
-	parser.add_argument('-searchspace-config', type=str, default='basic', choices=['sbasic', 'basic', 'vbasic', 'vbasic1', 'with-illegal', 'bert', 'full'])
+	parser.add_argument('-searchspace-config', type=str, default='basic', choices=['sbasic', 'basic', 'vbasic', 'vbasic1', 'with-illegal', 'bert', 'full', 'supervised'])
 
 
 class Config(object):
@@ -96,6 +97,16 @@ class Config(object):
 		assert output_id in self.config['O'], 'Invalid Output ID '
 		out_name = self.config['O'][output_id]
 		return [str(x) for x in range(ALL_SENT_CLASSF_OUTPUTS[out_name])]
+	
+	def get_vocab_supervised(self, output_id):
+		assert output_id in self.config['O'], 'Invalid Output ID '
+		out_name = self.config['O'][output_id]
+		return [str(x) for x in range(ALL_SUPERVISED_OUTPUTS[out_name])]
+	
+	def is_supervised(self, output_id):
+		assert output_id in self.config['O'], 'Invalid Output ID '
+		out_name = self.config['O'][output_id]
+		return out_name in ALL_SUPERVISED_OUTPUTS.keys()
 
 def run_tests():
 	try:

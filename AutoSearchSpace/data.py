@@ -8,8 +8,15 @@ from collections import Counter, defaultdict
 from data_utils import *
 import math
 
+from datasets import load_dataset
 from torch.utils.data import Dataset, DataLoader, RandomSampler, SequentialSampler
 logger = logging.getLogger(__name__)
+
+import sys
+PATH = os.path.join(os.getcwd(), "dont_stop_pretraining/")
+sys.path.insert(1, PATH)
+from dataset.dataset_readers.text_classification_json_reader_with_sampling import TextClassificationJsonReaderWithSampling
+
 
 OUT_PAD = -100
 
@@ -19,7 +26,83 @@ def add_data_args(parser):
 	parser.add_argument('-out-domain-data', type=str, default=None)
 	parser.add_argument('-neural-lm-data', type=str, default=None)
 
-# Todo [ldery] - will need to incorporate caching here
+
+DATA_PATHS = {
+	'CITATION_INTENT': '/home/ldery/internship/dsp/datasets/citation_intent/train.jsonl',
+	'CHEMPROT': '/home/ldery/internship/dsp/datasets/chemprot/train.jsonl',
+	'SCIIE':  '/home/ldery/internship/dsp/datasets/sciie/train.jsonl'
+}
+
+import pdb
+class SupervisedDataset(Dataset):
+	def __init__(self, dataset_name):
+		self.is_supervised = True
+		self.process_dataset(dataset_name)
+
+	def process_dataset(self, dataset_name):
+		dataset_reader = TextClassificationJsonReaderWithSampling(
+							token_indexers=None, tokenizer=None,
+							max_sequence_length=None, lazy=None
+						)
+		# Read from the dataset
+		fname = DATA_PATHS[dataset_name]
+		all_samples = dataset_reader._read(fname, raw_text=True)
+		self.examples = []
+		all_labels = []
+		for instance in all_samples:
+			text, label = instance
+			if label not in all_labels:
+				all_labels.append(label)
+			label_idx = all_labels.index(label)
+			self.examples.append({'text': text, 'label': label_idx})
+
+
+
+	def __len__(self):
+		return len(self.examples)
+
+	def __getitem__(self, i):
+		this_sample = self.examples[i]
+		return {'sample': this_sample['text'], 'label':this_sample['label'], 'idx': i}
+
+	def get_samples(self, n_samples, is_sent_config=False):
+		total_samples = len(self.examples)
+		chosen_idxs = np.random.choice(total_samples, n_samples)
+		all_chosen = [self[idx] for idx in chosen_idxs]
+		return all_chosen
+
+
+class MNLIDataset(Dataset):
+	def __init__(self, tokenizer):
+		dataset = load_dataset('multi_nli', split='train')
+		self.tokenizer = tokenizer
+		self.is_supervised = True
+		self.process_dataset(dataset)
+	
+	def process_dataset(self, dataset):
+		self.examples = []
+		for entry in dataset:
+			this_entry = {
+				'label': entry['label'],
+				'premise': entry['premise'],
+				'hypothesis':  entry['hypothesis'],
+			}
+			self.examples.append(this_entry)
+
+	def __len__(self):
+		return len(self.examples)
+
+	def __getitem__(self, i):
+		this_sample = self.examples[i]
+		return {'sample': (this_sample['premise'], this_sample['hypothesis']), 'label':this_sample['label'], 'idx': i}
+
+	def get_samples(self, n_samples, is_sent_config=False):
+		total_samples = len(self.examples)
+		chosen_idxs = np.random.choice(total_samples, n_samples)
+		all_chosen = [self[idx] for idx in chosen_idxs]
+		return all_chosen
+
+
 class LineByLineRawTextDataset(Dataset):
 	def __init__(self, file_path, tokenizer, tf_or_idf_present, cap_present, max_=10):
 		assert os.path.isfile(file_path)
@@ -30,6 +113,7 @@ class LineByLineRawTextDataset(Dataset):
 		self.doc_lens = []
 		self.doc_names = []
 		self.max_ = max_
+		self.is_supervised = False
 
 		if cap_present:
 			all_caps = []
@@ -166,6 +250,7 @@ class DataOptions(object):
 		self.id_to_dataset_dict = {}
 		tf_or_idf_present = ('TFIDF' in output_dict.values()) or ('TF' in output_dict.values())
 		cap_present = 'CAP' in output_dict.values()
+
 		for v, k in data_dict.items():
 			path = None
 			if k == 'Task':
@@ -180,8 +265,14 @@ class DataOptions(object):
 			elif k == 'Neural-LM':
 				assert args.neural_lm_data is not None, 'In Domain Data Location not specified'
 				path = args.neural_lm_data
-			assert path is not None, 'Invalid data type given. {}:{}'.format(k, v)
-			dataset = LineByLineRawTextDataset(path, tokenizer, tf_or_idf_present, cap_present)
+
+			if k == 'MNLI-Data':
+				dataset = MNLIDataset(tokenizer)
+			elif k in ['CITATION_INTENT'] : # need to extend this
+				dataset = SupervisedDataset(k)
+			else:
+				assert path is not None, 'Invalid data type given. {}:{}'.format(k, v)
+				dataset = LineByLineRawTextDataset(path, tokenizer, tf_or_idf_present, cap_present)
 			self.id_to_dataset_dict[v] = dataset
 
 	def get_dataset(self, id_):
@@ -216,10 +307,13 @@ class DataTransformAndItr(object):
 
 	def apply_out_tform(
 							self, output_type, ds, padded_sent, tformed_sent,
-							orig_samples
+							orig_samples, is_supervised=False
 						):
 		if output_type == 'DENOISE':
 			assert padded_sent.shape == tformed_sent.shape, 'Invalid Shapes. Input must have same shape as output'
+			return {'input': padded_sent, 'output': tformed_sent}
+		elif is_supervised:
+			assert padded_sent.shape[0] == tformed_sent.shape[0], 'Invalid Shapes. Must have same batch size for input and output in supervised setting'
 			return {'input': padded_sent, 'output': tformed_sent}
 		elif output_type == 'TFIDF':
 			tfidf_sent = [ds.gettfidfs(x['idx'], special_tok_mask[id_]) for id_, x in enumerate(orig_samples)]
@@ -281,7 +375,7 @@ class DataTransformAndItr(object):
 			ds_probas = searchOpts.get_relative_probas(0, datasets)
 			for ds_idx, ds_id in enumerate(datasets):
 				n_ds_samples = math.ceil(num_samples * ds_probas[ds_idx].item())
-				ds = self.dataOpts.get_dataset(ds_idx)
+				ds = self.dataOpts.get_dataset(ds_id)
 
 				this_ds_configs = [config for config in this_configs if config[0] == ds_id]
 				out_tforms = np.unique([config[-1] for config in this_ds_configs])
@@ -298,16 +392,21 @@ class DataTransformAndItr(object):
 						if idx in token_tforms:
 							token_probas[name] = probas[list(token_tforms).index(idx)].item()
 
-				inputs, labels, masks_for_tformed = self.collate(examples, token_probas)
+				(inputs, labels, masks_for_tformed), supervised_labels = self.collate(examples, token_probas)
 				pad_mask = 1.0 - (inputs.eq(self.dataOpts.tokenizer.pad_token_id)).float()
 				rep_mask = representation_tform.get_rep_tform(inputs.shape, pad_mask, rep_id)
 				batch = {'input': inputs, 'output': None, 'rep_mask': rep_mask}
 				config_dict = {}
 				for config_ in this_ds_configs:
 					token_tform_name = stage_map[config_[1]]
-					task_output = masks_for_tformed[token_tform_name][1]
+					task_output = masks_for_tformed[token_tform_name][1] 
+					# We are assuming that the out-type will be the same as the ds-type in the supervised setting
+					is_supervised = searchOpts.config.get_name(3, config_[-1]) == searchOpts.config.get_name(0, config_[0])
+					if is_supervised:
+						assert ds.is_supervised, 'We can only have this setting for supervised data'
+						task_output = supervised_labels
 					out_type = searchOpts.config.get_name(3, config_[-1])
-					dict_ = self.apply_out_tform(out_type, ds, inputs, task_output, examples)
+					dict_ = self.apply_out_tform(out_type, ds, inputs, task_output, examples, is_supervised=is_supervised)
 					config_dict[config_] = dict_['output']
 				aggregated_data.append((batch, config_dict))
 			# Avoiding pre-mature optimization here by aggregating by representation
@@ -320,8 +419,11 @@ class DataTransformAndItr(object):
 								max_length=self.block_size, return_special_tokens_mask=True
 				)
 		all_egs = [torch.tensor(x) for x in out["input_ids"]]
+		labels = None
+		if 'label' in examples[0]:
+			labels = torch.tensor([x['label'] for x in examples])
 		inputs = pad_sequence(all_egs, self.dataOpts.tokenizer.pad_token_id)
-		return self.apply_in_tform(inputs, token_probas)
+		return self.apply_in_tform(inputs, token_probas), labels
 
 
 # Todo  [ldery] - run some tests to make sure code here is working
