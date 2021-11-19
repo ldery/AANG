@@ -1,11 +1,20 @@
+# HYPER_CONFIG = {
+# 		'auxlr': [1.0, 5e-1], # [2.0, 1.0, 5e-1],
+# 		'soptlr': [1e-1, 5e-2],
+# 		'classflr': [1e-3, 1e-4],
+# 		'nconf_samp': [3, 6],
+# 		'primbsz': [256], # [128, 256]
+# 		'auxbsz': [256]
+# }
 HYPER_CONFIG = {
 		'auxlr': [2.0, 1.0, 5e-1],
 		'soptlr': [1e-1, 5e-2],
-		'classflr': [1e-4, 1e-3],
+		'classflr': [1e-3, 1e-4],
 		'nconf_samp': [3, 6],
 		'primbsz': [128, 256],
 		'auxbsz': [256]
 }
+
 
 
 CITATION_INTENT = {

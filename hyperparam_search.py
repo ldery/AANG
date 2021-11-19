@@ -90,7 +90,8 @@ if __name__ == "__main__":
 	args = parser.parse_args()
 	task_info = get_task_info(args)
 	all_hyperconfigs = get_all_hyperconfigs(HYPER_CONFIG)
-	num_gpus = torch.cuda.device_count() + 1
+	num_gpus = torch.cuda.device_count() + int(not args.runthreads)
+
 	cmnd_bsz = math.ceil(len(all_hyperconfigs) / num_gpus)
 	all_threads = []
 	all_conf_results = {} 
@@ -115,7 +116,7 @@ if __name__ == "__main__":
 	# We can now write the results to a csv
 	print('All threads are done. Gather the configs and generate csv of results')
 	timestr = time.strftime("%Y%m%d-%H%M%S")
-	fname = "resultsSheets/{}.csv".format(timestr)
+	fname = "resultsSheets/{}_{}.csv".format(args.task, timestr)
 	with open(fname, 'w') as fhandle:
 		headnames = list(HYPER_CONFIG.keys())
 		headnames.extend(['preft.f1.mean', 'preft.f1.std', 'postft.f1.mean', 'postft.f1.std'])
