@@ -284,6 +284,11 @@ class ModelWithAuxTasks(AutoModel):
 				vocab = Vocabulary()
 				vocab.add_tokens_to_namespace(searchOpts.get_vocab(aux_loss_config[-1]))
 				self.setup_classifier(dropout, key_, vocab, embedding_dim, ff_multiplier, num_layers=1)
+			elif searchOpts.config.is_supervised(aux_loss_config[-1]):
+				vocab = Vocabulary()
+				vocab_tokens = searchOpts.config.get_vocab_supervised(aux_loss_config[-1])
+				vocab.add_tokens_to_namespace(vocab_tokens, namespace='labels')
+				self.setup_classifier(dropout, key_, vocab, embedding_dim, ff_multiplier, activation_=nn.ReLU(), num_layers=num_layers)
 			else:
 				raise ValueErorr('Invalid aux_loss_config : ', aux_loss_config)
 			self.head_list.append(key_)
@@ -321,13 +326,13 @@ class ModelWithAuxTasks(AutoModel):
 		setattr(self, 'AuxHead-{}'.format(task_idx), classifier)
 		return classifier
 
-	def setup_classifier(self, dropout, task_idx, vocab, embedding_dim, ff_multiplier, num_layers=1):
+	def setup_classifier(self, dropout, task_idx, vocab, embedding_dim, ff_multiplier, activation_=torch.nn.Tanh(), num_layers=1):
 		text_field_embedder = self.base_model
 		seq2vec_encoder = CLSPooler(embedding_dim)
 		hidden_dim = embedding_dim * ff_multiplier
 		feedforward = FeedForward(
 									embedding_dim, num_layers, hidden_dims=hidden_dim,
-									activations=torch.nn.Tanh(), dropout=dropout
+									activations=activation_, dropout=dropout
 								)
 		classifier = BasicClassifierWithF1(vocab, text_field_embedder, seq2vec_encoder, feedforward, dropout=dropout, initializer=None)
 		classifier.to(self.base_model.device)
@@ -651,6 +656,11 @@ class ModelWithAuxTasks(AutoModel):
 				human_readable = searchOpts.get_config_human_readable(aux_loss_config)
 				task_id = ".".join([str(x) for x in aux_loss_config]) if not self.share_output_heads else str(aux_loss_config[-1])
 				batch['output'] = task_output.cuda()
+				
+				if searchOpts.config.get_name(3, aux_loss_config[-1]) == searchOpts.config.get_name(0, aux_loss_config[0]):
+					if  batch['input'].shape[0] !=  batch['output'].shape[0]:
+						print('There is a shape mis-match and this should not happen')
+						pdb.set_trace()
 				task_out, task_head = self.run_task(task_id, batch, embedded_text=embedded_text)
 
 				is_not_last = config_idx != (len(config_dict) - 1)
@@ -685,6 +695,8 @@ class ModelWithAuxTasks(AutoModel):
 		aux_norm = calc_norm(sum_of_aux_grads) + EPS
 		cos_sim = dot_prod(dev_head_grads, sum_of_aux_grads)
 		cos_sim = (cos_sim / (dev_norm * aux_norm)) / self.grad_accum_factor
+		if torch.isnan(torch.tensor([cos_sim])):
+			pdb.set_trace()
 		searchOpts.update_grad('auxiliary', -cos_sim)
 		self.weight_stats['auxiliary'].append((dev_norm.item(), (aux_norm.item() / all_aux_pts), cos_sim))
 		# Use 0.0 as the intermediate auxiliary loss. You can just look at the total
@@ -708,6 +720,7 @@ class ModelWithAuxTasks(AutoModel):
 			model_out = this_head(input_, output_, attn_mask=rep_mask)
 		return model_out, this_head
 
+
 	# Todo [ldery] - you can either normalize on a per-task basis or normalize across all tasks.
 	# You should test out both
 	def compute_task_weight_gradients(self, loss_, task_head, dev_info, loss_config, searchOpts, is_prim=False, retain_graph=True):
@@ -728,6 +741,8 @@ class ModelWithAuxTasks(AutoModel):
 		cos_sim = cos_sim / self.grad_accum_factor
 		self.per_param_dp[task_desc].append(per_param_dp)
 		searchOpts.update_grad(loss_config, -cos_sim)
+		if torch.isnan(torch.tensor([cos_sim])):
+			pdb.set_trace()
 
 		return gradients
 

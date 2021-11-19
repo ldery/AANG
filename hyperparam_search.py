@@ -91,7 +91,6 @@ if __name__ == "__main__":
 	task_info = get_task_info(args)
 	all_hyperconfigs = get_all_hyperconfigs(HYPER_CONFIG)
 	num_gpus = torch.cuda.device_count() + int(not args.runthreads)
-
 	cmnd_bsz = math.ceil(len(all_hyperconfigs) / num_gpus)
 	all_threads = []
 	all_conf_results = {} 

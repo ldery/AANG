@@ -7,11 +7,12 @@ from searchspace_options import (
 	ALL_TOKEN_OUTPUTS,
 	ALL_SENT_CLASSF_OUTPUTS,
 	ALL_SENT_DOT_OUTPUTS,
-	ALL_TOKEN_CLASSF
+	ALL_TOKEN_CLASSF,
+	ALL_SUPERVISED_OUTPUTS,
 )
 
 def add_config_args(parser):
-	parser.add_argument('-searchspace-config', type=str, default='basic', choices=['sbasic', 'basic', 'vbasic', 'vbasic1', 'with-illegal', 'bert', 'full'])
+	parser.add_argument('-searchspace-config', type=str, default='basic', choices=['sbasic', 'basic', 'vbasic', 'vbasic1', 'with-illegal', 'bert', 'full', 'supervised'])
 
 
 class Config(object):
@@ -63,9 +64,8 @@ class Config(object):
 		for stage_id, idx in enumerate(tuple_):
 			op_name = self.get_stage(stage_id)[idx]
 			op_list.append(op_name)
-		op_list = set(op_list)
-		for illegal in self.illegal_sets:
-			if illegal.issubset(op_list):
+		for combo in itertools.combinations(op_list, 2):
+			if combo in self.illegal_sets:
 				return True
 		return False
 	
@@ -96,6 +96,16 @@ class Config(object):
 		assert output_id in self.config['O'], 'Invalid Output ID '
 		out_name = self.config['O'][output_id]
 		return [str(x) for x in range(ALL_SENT_CLASSF_OUTPUTS[out_name])]
+	
+	def get_vocab_supervised(self, output_id):
+		assert output_id in self.config['O'], 'Invalid Output ID '
+		out_name = self.config['O'][output_id]
+		return [str(x) for x in range(ALL_SUPERVISED_OUTPUTS[out_name])]
+	
+	def is_supervised(self, output_id):
+		assert output_id in self.config['O'], 'Invalid Output ID '
+		out_name = self.config['O'][output_id]
+		return out_name in ALL_SUPERVISED_OUTPUTS.keys()
 
 def run_tests():
 	try:

@@ -7,11 +7,11 @@
 # 		'auxbsz': [256]
 # }
 HYPER_CONFIG = {
-		'auxlr': [2.0, 1.0, 5e-1],
+		'auxlr': [0.1, 1.0, 5e-1],
 		'soptlr': [1e-1, 5e-2],
 		'classflr': [1e-3, 1e-4],
 		'nconf_samp': [3, 6],
-		'primbsz': [128, 256],
+		'primbsz': [128],
 		'auxbsz': [256]
 }
 

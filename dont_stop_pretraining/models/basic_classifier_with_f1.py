@@ -13,6 +13,7 @@ from allennlp.training.metrics import CategoricalAccuracy, F1Measure, MeanAbsolu
 import pdb
 
 EPS = 1e-8
+LARGE_NEG = -1E8
 
 @Model.register("basic_classifier_with_f1")
 class BasicClassifierWithF1(Model):
@@ -291,7 +292,7 @@ https://github.com/StephAO/olfmlm/blob/6be204cdb78cda71b3bf37dd5c0a186e990a55c1/
 '''
 def batch_cos_sim(a, b):
 	with torch.no_grad():
-		norm_a = a.norm(dim=-1)[:, :, None] + EPS
+		norm_a = a.norm(dim=-1)[:, None] + EPS
 		norm_b = b.norm(dim=-1)[:, None] + EPS
 	a_norm = a / norm_a
 	b_norm = b / norm_b
@@ -319,8 +320,8 @@ class BasicSentenceClassifier(BasicClassifierWithF1):
 		self.tok_layernorm = torch.nn.LayerNorm(input_dim)
 
 		self._seq2vec_encoder = seq2vec_encoder
-		self._accuracy = CategoricalAccuracy()
-		self._loss = torch.nn.CrossEntropyLoss(reduction='none')
+		self._mae = MeanAbsoluteError()
+		self._loss = torch.nn.MSELoss(reduction='none')
 		if initializer is not None:
 			initializer(self)
 
@@ -345,25 +346,33 @@ class BasicSentenceClassifier(BasicClassifierWithF1):
 			tok_tformed = self._dropout(embedded_text[1][-1])
 		tok_tformed = self.tok_feedforward(tok_tformed)
 		tok_tformed = self.tok_layernorm(tok_tformed)
-		logits = batch_cos_sim(tok_tformed, pooled_text).squeeze()
+
+		tok_tformed = tok_tformed * (label > 0).float().unsqueeze(-1)
+		mask = torch.zeros_like(tok_tformed).masked_fill((label < 0).unsqueeze(-1), LARGE_NEG)
+		tok_tformed = torch.max(tok_tformed + mask, dim=1)[0]  # We are doing max-pooling here
+
 		n_batches = pooled_text.shape[0]
 		assert n_batches % 2 == 0, 'There has to be an even number of inputs here'
 
-		label_mask = (label < 0)
+		logits = batch_cos_sim(tok_tformed, pooled_text).squeeze()
+
 		updated_labels = list(range(n_batches))
 		updated_labels = torch.tensor(updated_labels[(n_batches // 2):] + updated_labels[:(n_batches // 2)]).view(-1, 1)
-		updated_labels = updated_labels.to(label.device)
-		new_labels = torch.ones_like(label, device=label.device) * updated_labels
-		new_labels = new_labels.masked_fill(label_mask, label.min())
+		new_labels = updated_labels.to(label.device)
+
+
+		label_mask = 1.0 - ((label > 0).float().sum(dim=-1) == 0).float()
+		logits = label_mask * torch.gather(logits, 1, new_labels).squeeze()
+		label = torch.ones(len(logits), device=label_mask.device) * label_mask
 
 		output_dict = {}
 		if label is not None:
-			logits = logits.view(-1, logits.shape[-1])
-			label = new_labels.long().view(-1)
 			loss = self._loss(logits, label)
+
 			output_dict["loss_full"] = loss
 			output_dict["loss"] = loss.sum() / (len(loss.nonzero()) + EPS)
-			self._accuracy(logits, label)
+
+			self._mae(logits, label)
 		return output_dict
 	
 	def get_metrics(self, reset: bool = False) -> Dict[str, float]:
