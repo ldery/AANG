@@ -57,7 +57,6 @@ class SupervisedDataset(Dataset):
 			self.examples.append({'text': text, 'label': label_idx})
 
 
-
 	def __len__(self):
 		return len(self.examples)
 
@@ -83,7 +82,7 @@ class MNLIDataset(Dataset):
 		self.examples = []
 		for entry in dataset:
 			this_entry = {
-				'label': entry['label'],
+				'label': int(entry['label']),
 				'premise': entry['premise'],
 				'hypothesis':  entry['hypothesis'],
 			}
@@ -266,7 +265,7 @@ class DataOptions(object):
 				assert args.neural_lm_data is not None, 'In Domain Data Location not specified'
 				path = args.neural_lm_data
 
-			if k == 'MNLI-Data':
+			if k == 'MNLI':
 				dataset = MNLIDataset(tokenizer)
 			elif k in ['CITATION_INTENT'] : # need to extend this
 				dataset = SupervisedDataset(k)

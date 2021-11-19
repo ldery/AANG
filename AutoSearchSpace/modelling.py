@@ -288,7 +288,7 @@ class ModelWithAuxTasks(AutoModel):
 				vocab = Vocabulary()
 				vocab_tokens = searchOpts.config.get_vocab_supervised(aux_loss_config[-1])
 				vocab.add_tokens_to_namespace(vocab_tokens, namespace='labels')
-				self.setup_classifier(dropout, key_, vocab, embedding_dim, ff_multiplier, num_layers=num_layers)
+				self.setup_classifier(dropout, key_, vocab, embedding_dim, ff_multiplier, activation_=nn.ReLU(), num_layers=num_layers)
 			else:
 				raise ValueErorr('Invalid aux_loss_config : ', aux_loss_config)
 			self.head_list.append(key_)
@@ -326,13 +326,13 @@ class ModelWithAuxTasks(AutoModel):
 		setattr(self, 'AuxHead-{}'.format(task_idx), classifier)
 		return classifier
 
-	def setup_classifier(self, dropout, task_idx, vocab, embedding_dim, ff_multiplier, num_layers=1):
+	def setup_classifier(self, dropout, task_idx, vocab, embedding_dim, ff_multiplier, activation_=torch.nn.Tanh(), num_layers=1):
 		text_field_embedder = self.base_model
 		seq2vec_encoder = CLSPooler(embedding_dim)
 		hidden_dim = embedding_dim * ff_multiplier
 		feedforward = FeedForward(
 									embedding_dim, num_layers, hidden_dims=hidden_dim,
-									activations=torch.nn.Tanh(), dropout=dropout
+									activations=activation_, dropout=dropout
 								)
 		classifier = BasicClassifierWithF1(vocab, text_field_embedder, seq2vec_encoder, feedforward, dropout=dropout, initializer=None)
 		classifier.to(self.base_model.device)

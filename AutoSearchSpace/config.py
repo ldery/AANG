@@ -64,9 +64,8 @@ class Config(object):
 		for stage_id, idx in enumerate(tuple_):
 			op_name = self.get_stage(stage_id)[idx]
 			op_list.append(op_name)
-		op_list = set(op_list)
-		for illegal in self.illegal_sets:
-			if illegal.issubset(op_list):
+		for combo in itertools.combinations(op_list, 2):
+			if combo in self.illegal_sets:
 				return True
 		return False
 	

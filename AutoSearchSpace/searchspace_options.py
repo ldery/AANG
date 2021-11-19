@@ -29,12 +29,20 @@ VBASIC1 = {
 }
 VBASIC1['out-space'] = [*VBASIC1['out-token-space'], *VBASIC1['out-sent-space']]
 
-SUPERVISED = deepcopy(VBASIC1)
-SUPERVISED['input-space'].append('CITATION_INTENT')
-SUPERVISED['out-sup-space'] = ['CITATION_INTENT']
-SUPERVISED['out-space'] = [*SUPERVISED['out-sup-space'], *SUPERVISED['out-token-space'], *SUPERVISED['out-sent-space']]
+SUPERVISED = {
+	'input-space' : ['MNLI'],
+	'input-tform-space': ['None'],
+	'rep-tform-space' : ['None', 'Random-Factorized'],
+	'out-token-space' : ['MNLI'],
+	'out-sent-space': [],
+}
+SUPERVISED['out-space'] = [*SUPERVISED['out-token-space'], *SUPERVISED['out-sent-space']]
 
 
+# SUPERVISED = deepcopy(VBASIC1)
+# SUPERVISED['input-space'].append('MNLI') #['CITATION_INTENT']
+# SUPERVISED['out-sup-space'] = ['MNLI'] #['CITATION_INTENT']
+# SUPERVISED['out-space'] = [*SUPERVISED['out-sup-space'], *SUPERVISED['out-token-space'], *SUPERVISED['out-sent-space']]
 
 
 BASIC = {
@@ -129,13 +137,13 @@ def get_illegal_sets(config):
 		intersect = rep_w_issues.intersection(set(config['rep-tform-space']))
 		if len(intersect) == 0:
 			return []
-		illegal_pairs = [set([a, b]) for a in config['out-sent-space'] for b in intersect]
+		illegal_pairs = [(b, a) for a in config['out-sent-space'] for b in intersect]
 
 	if ('out-sup-space' in config) and (len(config['out-sup-space']) != 0):
 		rep_w_issues = set(['Left-To-Right', 'Right-To-Left'])
 		intersect = rep_w_issues.intersection(set(config['rep-tform-space']))
-		ill_rep = [set([a, b]) for a in config['out-sup-space'] for b in intersect]
-		ill_ds_out = [set([a, b]) for a in config['input-space'] for b in config['out-sup-space'] if a != b]
+		ill_rep = [(b, a) for a in config['out-sup-space'] for b in intersect]
+		ill_ds_out = [(a, b) for a in config['input-space'] for b in config['out-sup-space'] if a != b]
 		illegal_pairs.extend(ill_rep)
 		illegal_pairs.extend(ill_ds_out)
 	return illegal_pairs
