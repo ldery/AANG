@@ -20,6 +20,17 @@ VBASIC = {
 VBASIC['out-space'] = [*VBASIC['out-token-space'], *VBASIC['out-sent-space']]
 
 
+TAPT = {
+	'input-space' : ['Task'],
+	'input-tform-space': ['BERT'],
+	'rep-tform-space' : ['None'],
+	'out-token-space' : ['DENOISE'],
+	'out-sent-space': [],
+}
+TAPT['out-space'] = [*TAPT['out-token-space'], *TAPT['out-sent-space']]
+
+
+
 VBASIC1 = {
 	'input-space' : ['Task'],
 	'input-tform-space': ['None', 'Replace', 'Mask'],
@@ -39,10 +50,20 @@ SUPERVISED = {
 SUPERVISED['out-space'] = [*SUPERVISED['out-token-space'], *SUPERVISED['out-sent-space']]
 
 
-# SUPERVISED = deepcopy(VBASIC1)
-# SUPERVISED['input-space'].append('MNLI') #['CITATION_INTENT']
-# SUPERVISED['out-sup-space'] = ['MNLI'] #['CITATION_INTENT']
-# SUPERVISED['out-space'] = [*SUPERVISED['out-sup-space'], *SUPERVISED['out-token-space'], *SUPERVISED['out-sent-space']]
+CITATION_SUPERVISED = deepcopy(VBASIC)
+CITATION_SUPERVISED['input-space'] = ['CITATION_INTENT', 'In-Domain']
+CITATION_SUPERVISED['out-sup-space'] = ['CITATION_INTENT']
+CITATION_SUPERVISED['out-space'] = [*CITATION_SUPERVISED['out-sup-space'], *CITATION_SUPERVISED['out-token-space'], *CITATION_SUPERVISED['out-sent-space']]
+
+SCIIE_SUPERVISED = deepcopy(VBASIC)
+SCIIE_SUPERVISED['input-space'] = ['SCIIE', 'In-Domain']
+SCIIE_SUPERVISED['out-sup-space'] = ['SCIIE']
+SCIIE_SUPERVISED['out-space'] = [*SCIIE_SUPERVISED['out-sup-space'], *SCIIE_SUPERVISED['out-token-space'], *SCIIE_SUPERVISED['out-sent-space']]
+
+CHEMPROT_SUPERVISED = deepcopy(VBASIC)
+CHEMPROT_SUPERVISED['input-space'] = ['CHEMPROT', 'In-Domain']
+CHEMPROT_SUPERVISED['out-sup-space'] = ['CHEMPROT']
+CHEMPROT_SUPERVISED['out-space'] = [*CHEMPROT_SUPERVISED['out-sup-space'], *CHEMPROT_SUPERVISED['out-token-space'], *CHEMPROT_SUPERVISED['out-sent-space']]
 
 
 BASIC = {
@@ -103,6 +124,12 @@ ALL_SUPERVISED_OUTPUTS = {
 	'CHEMPROT': 13,
 }
 
+ALL_CONFIG_CHOICES = [
+	'sbasic', 'basic', 'vbasic', 'vbasic1', 'with-illegal', 
+	'bert', 'full', 'supervised', 'citation.supervised',
+	'sciie.supervised', 'chemprot.supervised', 'tapt'
+]
+
 def get_config(name):
 	config = None
 	if name == 'basic':
@@ -119,8 +146,16 @@ def get_config(name):
 		config = VBASIC1
 	elif name == 'supervised':
 		config = SUPERVISED
+	elif name == 'tapt':
+		config = TAPT
 	elif name == 'bert':
 		config = BERT
+	elif name == 'citation.supervised':
+		config = CITATION_SUPERVISED
+	elif name == 'sciie.supervised':
+		config = SCIIE_SUPERVISED
+	elif name == 'chemprot.supervised':
+		config = CHEMPROT_SUPERVISED
 	assert config is not None, 'Wrong Config name given : {}'.format(name)
 	return config
 

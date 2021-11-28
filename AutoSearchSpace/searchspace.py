@@ -76,6 +76,7 @@ class SearchOptions(object):
 			this_weights = (self.weights[stage_name]).squeeze()
 			if this_weights.numel() == 1:
 				this_weights = this_weights.unsqueeze(0)
+			this_weights = this_weights.cpu().numpy()
 			values = np.array([this_weights[id_] for id_ in stage_members])
 			if stage_id == 1 and len(stage_members) > 1: # This is a hack [fix - ldery]
 				# We want to add ['None', 'Replace', 'Mask']

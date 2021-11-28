@@ -43,8 +43,11 @@ def add_hyperparam_options(parser):
 	parser.add_argument('-grad-accum-steps', type=int, default=2)
 	parser.add_argument('-num-seeds', type=int, default=3)
 	parser.add_argument('-output-dir', type=str, default='autoaux_outputs')
+	parser.add_argument('-exp-name', type=str, default='hyperparamSearch')
 	parser.add_argument('-logdir', type=str, default='HyperParamLogs')
 	parser.add_argument('-runthreads', action='store_true')
+	parser.add_argument('-gpu-list', type=str)
+	parser.add_argument('-hyperconfig', type=str, default="full", choices=["full", "test", "partial"])
 
 
 def get_task_info(args):
@@ -67,16 +70,17 @@ def get_base_runstring(args, gpuid, config, task_info):
 	pergpubsz = int(config['auxbsz'] / args.grad_accum_steps)
 	primiterbsz = int(config['primbsz'] / args.grad_accum_steps)
 
-	logdir = "{}/MassLaunch/{}/{}".format(args.logdir, args.task, hyper_id)
+	logdir = "{}/MassLaunch/{}/{}/{}".format(args.logdir, args.exp_name, args.task, hyper_id)
 	os.makedirs(logdir, exist_ok=True)
+	this_output_dir = "{}/{}".format(args.output_dir, args.exp_name)
 
 	run_commands, outdirs = [], []
 	for seed in range(args.num_seeds):
 		logfile = "{}/seed={}.txt".format(logdir, seed)
-		outputdir ="{}/{}/{}/seed={}".format(args.output_dir, args.task, hyper_id, seed)
+		outputdir ="{}/{}/{}/seed={}".format(this_output_dir, args.task, hyper_id, seed)
 		os.makedirs(outputdir, exist_ok=True)
-		
-		run_command = "CUDA_VISIBLE_DEVICES={} python -u -m scripts.autoaux --prim-task-id {} --train_data_file {} --dev_data_file {} --test_data_file {} --output_dir {} --model_type roberta-base --model_name_or_path roberta-base  --tokenizer_name roberta-base --per_gpu_train_batch_size {}  --gradient_accumulation_steps {} --do_train --learning_rate {} --block_size 512 --logging_steps 10000 --classf_lr {} --classf_patience {} --num_train_epochs {} --classifier_dropout {} --overwrite_output_dir --classf_iter_batchsz  {} --classf_ft_lr 1e-6 --classf_max_seq_len 512 --seed {}  --classf_dev_wd {} --classf_dev_lr {} -searchspace-config {} -task-data {} -in-domain-data {} -num-config-samples {} --dev_batch_sz {} --eval_every 30 -prim-aux-lr {} -auxiliaries-lr {} --classf_warmup_frac {} --classf_wd {} --base_wd {} --dev_fit_iters {} -step-meta-every {} -use-factored-model -token_temp {} --share-output-heads --classf-metric {} &> {}".format(gpuid, args.task, task_info['trainfile'], task_info['devfile'], task_info['testfile'], outputdir, pergpubsz, args.grad_accum_steps, args.lr, config['classflr'], args.patience, args.iters, args.classfdp, primiterbsz, seed, args.dev_wd, args.devlr, args.base_spconfig, task_info['taskdata'], task_info['domaindata'], config['nconf_samp'], args.devbsz, config['soptlr'], config['auxlr'], args.warmup_frac, args.classf_wd, args.base_wd, args.dev_ft_iters, args.step_meta_every, args.tokentform_temp, task_info['metric'], logfile)
+		warmup_frac = args.warmup_frac if 'wfrac' not in task_info else task_info['wfrac']
+		run_command = "CUDA_VISIBLE_DEVICES={} python -u -m scripts.autoaux --prim-task-id {} --train_data_file {} --dev_data_file {} --test_data_file {} --output_dir {} --model_type roberta-base --model_name_or_path roberta-base  --tokenizer_name roberta-base --per_gpu_train_batch_size {}  --gradient_accumulation_steps {} --do_train --learning_rate {} --block_size 512 --logging_steps 10000 --classf_lr {} --classf_patience {} --num_train_epochs {} --classifier_dropout {} --overwrite_output_dir --classf_iter_batchsz  {} --classf_ft_lr 1e-6 --classf_max_seq_len 512 --seed {}  --classf_dev_wd {} --classf_dev_lr {} -searchspace-config {} -task-data {} -in-domain-data {} -num-config-samples {} --dev_batch_sz {} --eval_every 30 -prim-aux-lr {} -auxiliaries-lr {} --classf_warmup_frac {} --classf_wd {} --base_wd {} --dev_fit_iters {} -step-meta-every {} -use-factored-model -token_temp {} --share-output-heads --classf-metric {} &> {}".format(gpuid, args.task, task_info['trainfile'], task_info['devfile'], task_info['testfile'], outputdir, pergpubsz, args.grad_accum_steps, args.lr, config['classflr'], args.patience, args.iters, args.classfdp, primiterbsz, seed, args.dev_wd, args.devlr, args.base_spconfig, task_info['taskdata'], task_info['domaindata'], config['nconf_samp'], args.devbsz, config['soptlr'], config['auxlr'], warmup_frac, args.classf_wd, args.base_wd, args.dev_ft_iters, args.step_meta_every, args.tokentform_temp, task_info['metric'], logfile)
 		run_commands.append(run_command)
 		outdirs.append(outputdir)
 	
@@ -89,15 +93,19 @@ if __name__ == "__main__":
 	add_hyperparam_options(parser)
 	args = parser.parse_args()
 	task_info = get_task_info(args)
-	all_hyperconfigs = get_all_hyperconfigs(HYPER_CONFIG)
-	num_gpus = torch.cuda.device_count() + int(not args.runthreads)
+	this_hyper_config = get_hyper_config(args.hyperconfig)
+	all_hyperconfigs = get_all_hyperconfigs(this_hyper_config)
+
+	gpu_list = eval(str(args.gpu_list))
+	num_gpus = len(gpu_list)
 	cmnd_bsz = math.ceil(len(all_hyperconfigs) / num_gpus)
+
 	all_threads = []
 	all_conf_results = {} 
 	print('This is run threads bool : ',args.runthreads)
 	print('Generating configs and sending them to threads')
-	for gpuid in range(num_gpus):
-		hyperconfigs = all_hyperconfigs[cmnd_bsz * gpuid : (gpuid + 1)*cmnd_bsz]
+	for gpu_num, gpuid in enumerate(gpu_list):
+		hyperconfigs = all_hyperconfigs[cmnd_bsz * gpu_num : (gpu_num + 1)*cmnd_bsz]
 		this_commands = []
 		for config_ in hyperconfigs:
 			hyper_id, run_commands, outdirs = get_base_runstring(args, gpuid, config_, task_info)
@@ -115,9 +123,9 @@ if __name__ == "__main__":
 	# We can now write the results to a csv
 	print('All threads are done. Gather the configs and generate csv of results')
 	timestr = time.strftime("%Y%m%d-%H%M%S")
-	fname = "resultsSheets/{}_{}.csv".format(args.task, timestr)
+	fname = "resultsSheets/{}_{}_{}.csv".format(args.exp_name, args.task, timestr)
 	with open(fname, 'w') as fhandle:
-		headnames = list(HYPER_CONFIG.keys())
+		headnames = list(this_hyper_config.keys())
 		headnames.extend(['preft.f1.mean', 'preft.f1.std', 'postft.f1.mean', 'postft.f1.std'])
 		headnames.extend(['preft.acc.mean', 'preft.acc.std', 'postft.acc.mean', 'postft.acc.std',])
 		header = ",".join(headnames)
@@ -137,7 +145,7 @@ if __name__ == "__main__":
 				except:
 					print('Could not load results. Had to skip : {}'.format(outdir))
 
-			this_results = [config_[k] for k in list(HYPER_CONFIG.keys())]
+			this_results = [config_[k] for k in list(this_hyper_config.keys())]
 			this_results.extend([np.mean(preft_f1), np.std(preft_f1), np.mean(postft_f1), np.std(postft_f1)])
 			this_results.extend([np.mean(preft_acc), np.std(preft_acc), np.mean(postft_acc), np.std(postft_acc)])
 			this_entry = ",".join([str(x) for x in this_results])

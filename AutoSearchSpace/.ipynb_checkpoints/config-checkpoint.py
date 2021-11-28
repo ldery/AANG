@@ -9,10 +9,11 @@ from searchspace_options import (
 	ALL_SENT_DOT_OUTPUTS,
 	ALL_TOKEN_CLASSF,
 	ALL_SUPERVISED_OUTPUTS,
+	ALL_CONFIG_CHOICES
 )
 
 def add_config_args(parser):
-	parser.add_argument('-searchspace-config', type=str, default='basic', choices=['sbasic', 'basic', 'vbasic', 'vbasic1', 'with-illegal', 'bert', 'full', 'supervised'])
+	parser.add_argument('-searchspace-config', type=str, default='basic', choices=ALL_CONFIG_CHOICES)
 
 
 class Config(object):

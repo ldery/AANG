@@ -267,10 +267,10 @@ class DataOptions(object):
 
 			if k == 'MNLI':
 				dataset = MNLIDataset(tokenizer)
-			elif k in ['CITATION_INTENT'] : # need to extend this
+			elif k in list(DATA_PATHS.keys()):
 				dataset = SupervisedDataset(k)
 			else:
-				assert path is not None, 'Invalid data type given. {}:{}'.format(k, v)
+				assert path is not None, 'Invalid data type given. {} : {}'.format(k, v)
 				dataset = LineByLineRawTextDataset(path, tokenizer, tf_or_idf_present, cap_present)
 			self.id_to_dataset_dict[v] = dataset
 
