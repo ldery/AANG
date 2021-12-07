@@ -39,6 +39,7 @@ def mask_tokens(inputs, tokenizer, proba, token_proba=None):
 	tk_prob_is_none = token_proba is None
 	tformed_mask_indices = {}
 	indices_replaced, indices_random = None, None
+
 	# x% of the time, we replace masked input tokens with tokenizer.mask_token ([MASK])
 	if tk_prob_is_none or 'Mask' in token_proba:
 		mask_proba = 0.8 if tk_prob_is_none else token_proba['Mask']

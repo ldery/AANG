@@ -30,7 +30,8 @@ def add_data_args(parser):
 DATA_PATHS = {
 	'CITATION_INTENT': '/home/ldery/internship/dsp/datasets/citation_intent/train.jsonl',
 	'CHEMPROT': '/home/ldery/internship/dsp/datasets/chemprot/train.jsonl',
-	'SCIIE':  '/home/ldery/internship/dsp/datasets/sciie/train.jsonl'
+	'SCIIE':  '/home/ldery/internship/dsp/datasets/sciie/train.jsonl',
+	'HYPERPARTISAN':  '/home/ldery/internship/dsp/datasets/hyperpartisan/train.jsonl',
 }
 
 import pdb

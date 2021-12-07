@@ -11,11 +11,11 @@
 HYPER_CONFIG_PARTIAL = {
 		'auxlr': [0.1, 5e-1, 1.0],
 		'soptlr': [1e-1],
-		'classflr': [3e-3, 5e-3],
-		'wfrac': [0.01, 0.06, 0.1],
+		'classflr': [1e-4, 3e-3],
+		'wfrac': [0.06],
 		'nconf_samp': [3, 6],
-		'primbsz': [128],
-		'auxbsz': [256]
+		'primbsz': [64],
+		'auxbsz': [64]
 }
 
 HYPER_CONFIG_FULL = {
@@ -75,4 +75,24 @@ CHEMPROT = {
 	'domaindata': '/home/ldery/internship/dsp/datasets/chemprot/domain.10xTAPT.txt',
 	'metric':     'accuracy',
 }
+
+HYPERPARTISAN = {
+	'primtaskid': 'hyperpartisan',
+	'trainfile':  '/home/ldery/internship/dsp/datasets/hyperpartisan/train.jsonl',
+	'devfile':    '/home/ldery/internship/dsp/datasets/hyperpartisan/dev.jsonl',
+	'testfile':   '/home/ldery/internship/dsp/datasets/hyperpartisan/test.jsonl',
+	'taskdata':   '/home/ldery/internship/dsp/datasets/hyperpartisan/train.txt',
+	'domaindata': '/home/ldery/internship/dsp/datasets/hyperpartisan/domain.10xTAPT.txt',
+	'metric':     'f1',
+}
+RCT = {
+	'primtaskid': 'rct',
+	'trainfile':  '/home/ldery/internship/dsp/datasets/rct/train.jsonl',
+	'devfile':    '/home/ldery/internship/dsp/datasets/rct/dev.jsonl',
+	'testfile':   '/home/ldery/internship/dsp/datasets/rct/test.jsonl',
+	'taskdata':   '/home/ldery/internship/dsp/datasets/rct/train.txt',
+	'domaindata': '/home/ldery/internship/dsp/datasets/rct/domain.10xTAPT.txt',
+	'metric':     'accuracy',
+}
+
 

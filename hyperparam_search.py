@@ -57,6 +57,8 @@ def get_task_info(args):
 		return SCIIE
 	elif args.task == 'chemprot':
 		return CHEMPROT
+	elif args.task == 'hyperpartisan':
+		return HYPERPARTISAN
 
 def get_all_hyperconfigs(config_dict):
 	all_hypers = []

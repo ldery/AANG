@@ -735,7 +735,7 @@ class ModelWithAuxTasks(AutoModel):
 		# Calcute and save the cosine similarity between tasks
 		cos_sim = dot_prod(dev_head_grads, this_grads, ppdp=per_param_dp)
 		cos_sim = (cos_sim / (dev_norm * task_norm)) 
-		self.weight_stats[task_desc].append((dev_norm.item(), task_norm.item(), cos_sim))
+		self.weight_stats[task_desc].append((dev_norm.item(), task_norm.item(), cos_sim  / self.grad_accum_factor))
 
 		# Save the cosine similarity as the gradient
 		cos_sim = cos_sim / self.grad_accum_factor
@@ -751,6 +751,7 @@ class ModelWithAuxTasks(AutoModel):
 	def train_primary(self, n_iters, optimizer, lr_scheduler, max_grad_norm, patience=3, metric='f1'):
 		# Setup Optimizer and stuff
 		best_iter = 0
+		print('About to run train primary - see bsz = ', self.batch_sz, self.grad_accum_factor)
 		assert self.datasets is not None, 'Need to instantiate the dataset'
 		dataset = self.datasets['train']
 		key = self.primary_task_info['prim_task_id']
@@ -766,16 +767,23 @@ class ModelWithAuxTasks(AutoModel):
 			# Get the primary classifier
 			iterator = tqdm(iterator, total= total_iters, desc="Classifier Train Iterator")
 			for idx, samples in enumerate(iterator):
-				if (idx + 1) % self.grad_accum_factor == 0:
-					# We want to take a gradient step
-					torch.nn.utils.clip_grad_norm_(prim_head.parameters(), max_grad_norm)
-					optimizer.step()
-					if lr_scheduler is not None:
-						lr_scheduler.step()
-					optimizer.zero_grad()
-				output_dict = prim_head(*samples)
-				total_loss = output_dict['loss'] / self.grad_accum_factor
-				total_loss.backward()
+
+				try:
+					if (idx + 1) % self.grad_accum_factor == 0:
+						# We want to take a gradient step
+						torch.nn.utils.clip_grad_norm_(prim_head.parameters(), max_grad_norm)
+						optimizer.step()
+						if lr_scheduler is not None:
+							lr_scheduler.step()
+						optimizer.zero_grad()
+					output_dict = prim_head(*samples)
+					total_loss = output_dict['loss'] / self.grad_accum_factor
+					total_loss.backward()
+				except:
+					print('Encountered Exception. Trying to clean up')
+					torch.cuda.empty_cache()
+					gc.collect()
+					
 			# We want to evaluate the classifier
 			train_metrics = self.get_metrics(reset=True)
 			dev_metrics = self.evaluate_classifier(set_='dev')

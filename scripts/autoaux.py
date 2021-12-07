@@ -226,6 +226,8 @@ def auto_auxiliary(args):
 					)
 	model.to(args.device)
 	wrapper_model.to(args.device)
+	if args.skip_train:
+		return model, wrapper_model, tokenizer, 0
 
 	# Setup for training the model
 	if args.max_steps > 0:
@@ -535,6 +537,7 @@ def main():
 		"Default to the model max input length for single sentence inputs (take into account special tokens).",
 	)
 	parser.add_argument("--do_train", action="store_true", help="Whether to run training.")
+	parser.add_argument("--skip_train", action="store_true", help="Whether to skip training.")
 
 	parser.add_argument("--per_gpu_train_batch_size", default=4, type=int, help="Batch size per GPU/CPU for training.")
 
