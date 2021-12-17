@@ -9,13 +9,23 @@
 
 
 HYPER_CONFIG_PARTIAL = {
-		'auxlr': [0.1, 5e-1, 1.0],
+		'auxlr': [0.1, 5e-1],
 		'soptlr': [1e-1],
-		'classflr': [1e-4, 3e-3],
+		'classflr': [1e-4, 1e-3, 3e-3],
 		'wfrac': [0.06],
 		'nconf_samp': [3, 6],
 		'primbsz': [64],
-		'auxbsz': [64]
+		'auxbsz': [128]
+}
+
+HYPER_CONFIG_PARTIAL_BIG = {
+		'auxlr': [0.1, 5e-1, 1.0],
+		'soptlr': [1e-1],
+		'classflr': [1e-3, 3e-3],
+		'wfrac': [0.06],
+		'nconf_samp': [3, 6],
+		'primbsz': [128],
+		'auxbsz': [256]
 }
 
 HYPER_CONFIG_FULL = {
@@ -27,21 +37,25 @@ HYPER_CONFIG_FULL = {
 		'auxbsz': [256]
 }
 
+
 HYPER_CONFIG_TEST = {
-		'auxlr': [0.1],
+		'auxlr': [0.1, 5e-1],
 		'soptlr': [1e-1],
-		'classflr': [1e-3],
-		'nconf_samp': [6],
-		'primbsz': [128],
-		'auxbsz': [256]
+		'classflr': [1e-4, 1e-3, 3e-3],
+		'wfrac': [0.06],
+		'nconf_samp': [3, 6],
+		'primbsz': [64],
+		'auxbsz': [128]
 }
 
-
+	
 def get_hyper_config(config_name):
 	if config_name == 'full':
 		return HYPER_CONFIG_FULL
 	elif config_name == 'partial':
 		return HYPER_CONFIG_PARTIAL
+	elif config_name == 'partial_big':
+		return HYPER_CONFIG_PARTIAL_BIG
 	elif config_name == 'test':
 		return HYPER_CONFIG_TEST
 

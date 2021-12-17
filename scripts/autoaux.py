@@ -178,7 +178,7 @@ def auto_auxiliary(args):
 	# Create the search options object
 	searchOpts = SearchOptions(
 									autoloss_config, args.prim_aux_lr, args.auxiliaries_lr, use_EG=args.use_EG, step_every=args.step_meta_every,
-									use_factored_model=args.use_factored_model, is_cuda=True, token_temp=args.token_temp
+									use_factored_model=args.use_factored_model, is_cuda=True, token_temp=args.token_temp, warmstart_path=args.warmstart_path
 								)
 
 	# enumerate the valid loss configs and get iterators for each loss type
@@ -252,8 +252,10 @@ def auto_auxiliary(args):
 						optimizer_grouped_parameters, betas=eval(args.classf_betas),
 						lr=args.learning_rate, eps=args.adam_epsilon, weight_decay=args.base_wd
 					)
+	warmup_steps = min(int(args.classf_warmup_frac * t_total), args.max_warmup_steps)
+	logger.info('This is the number of warmup steps : {} '.format(warmup_steps))
 	scheduler = None if args.no_scheduler else get_linear_schedule_with_warmup(
-		optimizer, num_warmup_steps=int(args.classf_warmup_frac * t_total), num_training_steps=t_total
+		optimizer, num_warmup_steps=warmup_steps, num_training_steps=t_total
 	)
 	
 	# Setup an optimizer for the model heads
@@ -263,7 +265,7 @@ def auto_auxiliary(args):
 								weight_decay=args.classf_wd, lr=args.classf_lr
 							)
 	classifier_scheduler = None if args.no_scheduler else get_linear_schedule_with_warmup(
-		classifier_optim, num_warmup_steps=int(args.classf_warmup_frac * t_total), num_training_steps=t_total
+		classifier_optim, num_warmup_steps=warmup_steps, num_training_steps=t_total
 	)
 	
 	# Check if saved optimizer or scheduler states exist
@@ -423,6 +425,7 @@ def auto_auxiliary(args):
 				break
 	# Close the tensorboard writer
 	wrapper_model.close_writer()
+	searchOpts.save_state(os.path.join(args.output_dir, 'searchOpts.pth'))
 	return model, wrapper_model, tokenizer, global_step
 
 
@@ -536,6 +539,7 @@ def main():
 		"The training dataset will be truncated in block of this size for training."
 		"Default to the model max input length for single sentence inputs (take into account special tokens).",
 	)
+	parser.add_argument("--max-warmup-steps", type=int, default=700)
 	parser.add_argument("--do_train", action="store_true", help="Whether to run training.")
 	parser.add_argument("--skip_train", action="store_true", help="Whether to skip training.")
 

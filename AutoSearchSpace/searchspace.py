@@ -4,6 +4,7 @@ import torch.nn.functional as F
 from config import Config
 from torch.optim import SGD, Adam
 import math
+import os
 
 def add_searchspace_args(parser):
 	parser.add_argument('-prim-aux-lr', type=float, default=1e-4)
@@ -13,6 +14,7 @@ def add_searchspace_args(parser):
 	parser.add_argument('-step-meta-every', type=int, default=1)
 	parser.add_argument('-use-EG', action='store_true')
 	parser.add_argument('-token_temp', type=float, default=1.0)
+	parser.add_argument('-warmstart-path', type=str, default=None)
 
 
 def create_tensor(shape, init=0.0, requires_grad=True, is_cuda=True):
@@ -27,7 +29,7 @@ import pdb
 class SearchOptions(object):
 	def __init__(
 					self, config, prim_aux_lr, aux_lr, use_EG= False, step_every=1,
-					use_factored_model=True, is_cuda=True, token_temp=1.0
+					use_factored_model=True, is_cuda=True, token_temp=1.0, warmstart_path=None
 				):
 		self.config = config  # Store in case
 		self.weight_lr = prim_aux_lr
@@ -63,6 +65,34 @@ class SearchOptions(object):
 
 		self.use_EG = use_EG
 		self.tau = token_temp
+		if warmstart_path and (os.path.exists(warmstart_path)):
+			self.load_state(warmstart_path)
+
+		print('[STAT] We ended up with {} valid tasks'.format(len(self.valid_configurations)))
+
+	def save_state(self, path):
+		print('Saving SearchOpts state to : ', path)
+		save_dict = {
+			'weights': self.weights,
+			'valid_configs': self.valid_configurations
+		}
+		torch.save(
+			save_dict,
+			path
+		)
+
+	def load_state(self, path):
+		print('Loading SearchOpts state from : ', path)
+		state_dict = torch.load(path)
+		self.weights = state_dict['weights']
+		for name, weight in self.weights.items():
+			# Todo [ldery] - could do some sort of thresholding here if we wanted to that 
+			# auxiliary tasks that have essentially low values previously will be set to zero
+			if weight.requires_grad and (weight.grad is not None):
+				with torch.no_grad():
+					weight.grad.zero_()
+	
+		self.valid_configurations = state_dict['valid_configs']
 
 
 	def get_valid_configs(self):

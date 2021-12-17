@@ -50,6 +50,20 @@ SUPERVISED = {
 SUPERVISED['out-space'] = [*SUPERVISED['out-token-space'], *SUPERVISED['out-sent-space']]
 
 
+
+CITATION_ALL = {
+	'input-space' : ['CITATION_INTENT', 'In-Domain', 'MNLI'],
+	'input-tform-space': ['None', 'Replace', 'Mask'],
+	'rep-tform-space' : ['None', 'Left-To-Right', 'Right-To-Left', 'Random-Factorized'],
+	'out-token-space' : ['DENOISE'],
+	'out-sup-space':['CITATION_INTENT', 'MNLI'],
+	'out-sent-space': [],
+}
+CITATION_ALL['out-space'] = [*CITATION_ALL['out-sup-space'], *CITATION_ALL['out-token-space'], *CITATION_ALL['out-sent-space']]
+
+
+
+
 CITATION_SUPERVISED = deepcopy(VBASIC)
 CITATION_SUPERVISED['input-space'] = ['CITATION_INTENT', 'In-Domain']
 CITATION_SUPERVISED['out-sup-space'] = ['CITATION_INTENT']
@@ -134,7 +148,7 @@ ALL_CONFIG_CHOICES = [
 	'sbasic', 'basic', 'vbasic', 'vbasic1', 'with-illegal', 
 	'bert', 'full', 'supervised', 'citation.supervised',
 	'sciie.supervised', 'chemprot.supervised', 'tapt',
-	'hyperpartisan.supervised',
+	'hyperpartisan.supervised', 'citation.all'
 ]
 
 def get_config(name):
@@ -165,6 +179,8 @@ def get_config(name):
 		config = CHEMPROT_SUPERVISED
 	elif name == 'hyperpartisan.supervised':
 		config = HYPERPARTISAN_SUPERVISED
+	elif name == 'citation.all':
+		config = CITATION_ALL
 	assert config is not None, 'Wrong Config name given : {}'.format(name)
 	return config
 

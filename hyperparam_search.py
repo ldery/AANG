@@ -22,7 +22,16 @@ class MyThreadClass(threading.Thread):
 		for cmd in self.command_list:
 			os.system(cmd)
 
+'''
+Example Run2 : 
+1. python hyperparam_search.py -task hyperpartisan -base-spconfig hyperpartisan.supervised -patience 20 -devbsz 8 -grad-accum-steps 8 -exp-name Task-LM+SUPERVISED-W-Retrain -gpu-list "[0, 1]" -do-retrain  -hyperconfig partial -runthreads
+2.  python hyperparam_search.py -task chemprot -base-spconfig vbasic1 -patience 20 -grad-accum-steps 4 -exp-name Task-LM-W-Retrain -gpu-list "[2, 3]" -do-retrain  -hyperconfig partial_big -runthreads
 
+
+
+
+python hyperparam_search.py -task hyperpartisan -base-spconfig hyperpartisan.supervised -patience 20 -devbsz 8 -grad-accum-steps 8 -exp-name Task-LM+SUPERVISED-W-Retrain -gpu-list "[0, 1]" -do-retrain  -hyperconfig partial
+'''
 
 def add_hyperparam_options(parser):
 	parser.add_argument('-task', type=str, default='sciie')
@@ -47,7 +56,8 @@ def add_hyperparam_options(parser):
 	parser.add_argument('-logdir', type=str, default='HyperParamLogs')
 	parser.add_argument('-runthreads', action='store_true')
 	parser.add_argument('-gpu-list', type=str)
-	parser.add_argument('-hyperconfig', type=str, default="full", choices=["full", "test", "partial"])
+	parser.add_argument('-hyperconfig', type=str, default="full", choices=["full", "test", "partial", "partial_big"])
+	parser.add_argument('-do-retrain', action='store_true')
 
 
 def get_task_info(args):
@@ -67,6 +77,14 @@ def get_all_hyperconfigs(config_dict):
 	all_hyperconfigs = [{k: v for k, v in zip(all_keys, config)} for config in all_configs]
 	return all_hyperconfigs
 
+def has_been_run(fldr):
+	has_saved_model = os.path.exists(os.path.join(fldr, 'modelWAuxTasks.pth'))
+	has_saved_searchOpts =  os.path.exists(os.path.join(fldr, 'searchOpts.pth'))
+	if has_saved_model and has_saved_searchOpts:
+		return True
+	return False
+
+# Todo [ldery] - can clean this up a bit better !!!
 def get_base_runstring(args, gpuid, config, task_info):
 	hyper_id = ".".join(["{}={}".format(k, v) for k, v in config.items()])
 	pergpubsz = int(config['auxbsz'] / args.grad_accum_steps)
@@ -81,10 +99,27 @@ def get_base_runstring(args, gpuid, config, task_info):
 		logfile = "{}/seed={}.txt".format(logdir, seed)
 		outputdir ="{}/{}/{}/seed={}".format(this_output_dir, args.task, hyper_id, seed)
 		os.makedirs(outputdir, exist_ok=True)
-		warmup_frac = args.warmup_frac if 'wfrac' not in task_info else task_info['wfrac']
-		run_command = "CUDA_VISIBLE_DEVICES={} python -u -m scripts.autoaux --prim-task-id {} --train_data_file {} --dev_data_file {} --test_data_file {} --output_dir {} --model_type roberta-base --model_name_or_path roberta-base  --tokenizer_name roberta-base --per_gpu_train_batch_size {}  --gradient_accumulation_steps {} --do_train --learning_rate {} --block_size 512 --logging_steps 10000 --classf_lr {} --classf_patience {} --num_train_epochs {} --classifier_dropout {} --overwrite_output_dir --classf_iter_batchsz  {} --classf_ft_lr 1e-6 --classf_max_seq_len 512 --seed {}  --classf_dev_wd {} --classf_dev_lr {} -searchspace-config {} -task-data {} -in-domain-data {} -num-config-samples {} --dev_batch_sz {} --eval_every 30 -prim-aux-lr {} -auxiliaries-lr {} --classf_warmup_frac {} --classf_wd {} --base_wd {} --dev_fit_iters {} -step-meta-every {} -use-factored-model -token_temp {} --share-output-heads --classf-metric {} &> {}".format(gpuid, args.task, task_info['trainfile'], task_info['devfile'], task_info['testfile'], outputdir, pergpubsz, args.grad_accum_steps, args.lr, config['classflr'], args.patience, args.iters, args.classfdp, primiterbsz, seed, args.dev_wd, args.devlr, args.base_spconfig, task_info['taskdata'], task_info['domaindata'], config['nconf_samp'], args.devbsz, config['soptlr'], config['auxlr'], warmup_frac, args.classf_wd, args.base_wd, args.dev_ft_iters, args.step_meta_every, args.tokentform_temp, task_info['metric'], logfile)
-		run_commands.append(run_command)
-		outdirs.append(outputdir)
+		run_command = None
+		if not has_been_run(outputdir):
+			warmup_frac = args.warmup_frac if 'wfrac' not in task_info else task_info['wfrac']
+			run_command = "CUDA_VISIBLE_DEVICES={} python -u -m scripts.autoaux --prim-task-id {} --train_data_file {} --dev_data_file {} --test_data_file {} --output_dir {} --model_type roberta-base --model_name_or_path roberta-base  --tokenizer_name roberta-base --per_gpu_train_batch_size {}  --gradient_accumulation_steps {} --do_train --learning_rate {} --block_size 512 --logging_steps 10000 --classf_lr {} --classf_patience {} --num_train_epochs {} --classifier_dropout {} --overwrite_output_dir --classf_iter_batchsz  {} --classf_ft_lr 1e-6 --classf_max_seq_len 512 --seed {}  --classf_dev_wd {} --classf_dev_lr {} -searchspace-config {} -task-data {} -in-domain-data {} -num-config-samples {} --dev_batch_sz {} --eval_every 30 -prim-aux-lr {} -auxiliaries-lr {} --classf_warmup_frac {} --classf_wd {} --base_wd {} --dev_fit_iters {} -step-meta-every {} -use-factored-model -token_temp {} --share-output-heads --classf-metric {} &> {}".format(gpuid, args.task, task_info['trainfile'], task_info['devfile'], task_info['testfile'], outputdir, pergpubsz, args.grad_accum_steps, args.lr, config['classflr'], args.patience, args.iters, args.classfdp, primiterbsz, seed, args.dev_wd, args.devlr, args.base_spconfig, task_info['taskdata'], task_info['domaindata'], config['nconf_samp'], args.devbsz, config['soptlr'], config['auxlr'], warmup_frac, args.classf_wd, args.base_wd, args.dev_ft_iters, args.step_meta_every, args.tokentform_temp, task_info['metric'], logfile)
+
+		outputdir_retrain = None
+		if args.do_retrain:
+			searchOpts_path = os.path.join(outputdir, 'searchOpts.pth')
+			logfile = "{}/retrain.seed={}.txt".format(logdir, seed)
+			outputdir_retrain ="{}/{}/{}/retrain.seed={}".format(this_output_dir, args.task, hyper_id, seed)
+			os.makedirs(outputdir_retrain, exist_ok=True)
+			if not has_been_run(outputdir_retrain):
+				warmup_frac = args.warmup_frac if 'wfrac' not in task_info else task_info['wfrac']
+				retrain_run_command = "CUDA_VISIBLE_DEVICES={} python -u -m scripts.autoaux --prim-task-id {} --train_data_file {} --dev_data_file {} --test_data_file {} --output_dir {} --model_type roberta-base --model_name_or_path roberta-base  --tokenizer_name roberta-base --per_gpu_train_batch_size {}  --gradient_accumulation_steps {} --do_train --learning_rate {} --block_size 512 --logging_steps 10000 --classf_lr {} --classf_patience {} --num_train_epochs {} --classifier_dropout {} --overwrite_output_dir --classf_iter_batchsz  {} --classf_ft_lr 1e-6 --classf_max_seq_len 512 --seed {}  --classf_dev_wd {} --classf_dev_lr {} -searchspace-config {} -task-data {} -in-domain-data {} -num-config-samples {} --dev_batch_sz {} --eval_every 30 -prim-aux-lr {} -auxiliaries-lr {} --classf_warmup_frac {} --classf_wd {} --base_wd {} --dev_fit_iters {} -step-meta-every {} -use-factored-model -token_temp {} --share-output-heads --classf-metric {} -warmstart-path {} &> {}".format(gpuid, args.task, task_info['trainfile'], task_info['devfile'], task_info['testfile'], outputdir_retrain, pergpubsz, args.grad_accum_steps, args.lr, config['classflr'], args.patience, args.iters, args.classfdp, primiterbsz, seed, args.dev_wd, args.devlr, args.base_spconfig, task_info['taskdata'], task_info['domaindata'], config['nconf_samp'], args.devbsz, config['soptlr'], config['auxlr'], warmup_frac, args.classf_wd, args.base_wd, args.dev_ft_iters, args.step_meta_every, args.tokentform_temp, task_info['metric'], searchOpts_path, logfile)
+
+				run_command = "{}\n{}".format(run_command, retrain_run_command) if run_command else retrain_run_command
+
+
+		if run_command:
+			run_commands.append(run_command)
+		outdirs.append((outputdir, outputdir_retrain))
 	
 	return hyper_id, run_commands, outdirs
 
@@ -125,7 +160,7 @@ if __name__ == "__main__":
 	# We can now write the results to a csv
 	print('All threads are done. Gather the configs and generate csv of results')
 	timestr = time.strftime("%Y%m%d-%H%M%S")
-	fname = "resultsSheets/{}_{}_{}.csv".format(args.exp_name, args.task, timestr)
+	fname = "resultsSheets/{}_{}_{}.csv".format("{}{}".format(args.exp_name, '.retrain' if args.do_retrain else ''), args.task, timestr)
 	with open(fname, 'w') as fhandle:
 		headnames = list(this_hyper_config.keys())
 		headnames.extend(['preft.f1.mean', 'preft.f1.std', 'postft.f1.mean', 'postft.f1.std'])
@@ -136,6 +171,10 @@ if __name__ == "__main__":
 		for hyper_id, (outdirs, config_) in all_conf_results.items():
 			preft_f1, preft_acc, postft_f1, postft_acc = [], [], [], []
 			for outdir in outdirs:
+				if args.do_retrain:
+					_, outdir = outdir
+				else:
+					outdir, _ = outdir
 				try:
 					handle = open('{}/ftmodel.bestperfs.pkl'.format(outdir), 'rb')
 					info = pkl.load(handle)
