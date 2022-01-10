@@ -10,16 +10,6 @@ BERT = {
 BERT['out-space'] = [*BERT['out-token-space'], *BERT['out-sent-space']]
 
 
-VBASIC = {
-	'input-space' : ['Task', 'In-Domain'],
-	'input-tform-space': ['None', 'Replace', 'Mask'],
-	'rep-tform-space' : ['None', 'Left-To-Right', 'Right-To-Left', 'Random-Factorized'],
-	'out-token-space' : ['DENOISE'],
-	'out-sent-space': [],
-}
-VBASIC['out-space'] = [*VBASIC['out-token-space'], *VBASIC['out-sent-space']]
-
-
 TAPT = {
 	'input-space' : ['Task'],
 	'input-tform-space': ['BERT'],
@@ -29,6 +19,33 @@ TAPT = {
 }
 TAPT['out-space'] = [*TAPT['out-token-space'], *TAPT['out-sent-space']]
 
+GPT = {
+	'input-space' : ['Task'],
+	'input-tform-space': ['None'],
+	'rep-tform-space' : ['Left-To-Right'],
+	'out-token-space' : ['DENOISE'],
+	'out-sent-space': [],
+}
+GPT['out-space'] = [*GPT['out-token-space'], *GPT['out-sent-space']]
+
+XLNET = {
+	'input-space' : ['Task'],
+	'input-tform-space': ['None'],
+	'rep-tform-space' : ['Random-Factorized'],
+	'out-token-space' : ['DENOISE'],
+	'out-sent-space': [],
+}
+XLNET['out-space'] = [*XLNET['out-token-space'], *XLNET['out-sent-space']]
+
+
+VBASIC = {
+	'input-space' : ['Task', 'In-Domain'],
+	'input-tform-space': ['None', 'Replace', 'Mask'],
+	'rep-tform-space' : ['None', 'Left-To-Right', 'Right-To-Left', 'Random-Factorized'],
+	'out-token-space' : ['DENOISE'],
+	'out-sent-space': [],
+}
+VBASIC['out-space'] = [*VBASIC['out-token-space'], *VBASIC['out-sent-space']]
 
 
 VBASIC1 = {
@@ -62,20 +79,41 @@ CITATION_ALL = {
 CITATION_ALL['out-space'] = [*CITATION_ALL['out-sup-space'], *CITATION_ALL['out-token-space'], *CITATION_ALL['out-sent-space']]
 
 
+SCIIE_ALL = {
+	'input-space' : ['SCIIE', 'In-Domain', 'MNLI'],
+	'input-tform-space': ['None', 'Replace', 'Mask'],
+	'rep-tform-space' : ['None', 'Left-To-Right', 'Right-To-Left', 'Random-Factorized'],
+	'out-token-space' : ['DENOISE'],
+	'out-sup-space':['SCIIE', 'MNLI'],
+	'out-sent-space': [],
+}
+SCIIE_ALL['out-space'] = [*SCIIE_ALL['out-sup-space'], *SCIIE_ALL['out-token-space'], *SCIIE_ALL['out-sent-space']]
+
+CHEMPROT_ALL = {
+	'input-space' : ['CHEMPROT', 'In-Domain', 'MNLI'],
+	'input-tform-space': ['None', 'Replace', 'Mask'],
+	'rep-tform-space' : ['None', 'Left-To-Right', 'Right-To-Left', 'Random-Factorized'],
+	'out-token-space' : ['DENOISE'],
+	'out-sup-space':['CHEMPROT', 'MNLI'],
+	'out-sent-space': [],
+}
+CHEMPROT_ALL['out-space'] = [*CHEMPROT_ALL['out-sup-space'], *CHEMPROT_ALL['out-token-space'], *CHEMPROT_ALL['out-sent-space']]
+
+
 
 
 CITATION_SUPERVISED = deepcopy(VBASIC)
-CITATION_SUPERVISED['input-space'] = ['CITATION_INTENT', 'In-Domain']
+CITATION_SUPERVISED['input-space'] = ['CITATION_INTENT']
 CITATION_SUPERVISED['out-sup-space'] = ['CITATION_INTENT']
 CITATION_SUPERVISED['out-space'] = [*CITATION_SUPERVISED['out-sup-space'], *CITATION_SUPERVISED['out-token-space'], *CITATION_SUPERVISED['out-sent-space']]
 
 SCIIE_SUPERVISED = deepcopy(VBASIC)
-SCIIE_SUPERVISED['input-space'] = ['SCIIE', 'In-Domain']
+SCIIE_SUPERVISED['input-space'] = ['SCIIE']
 SCIIE_SUPERVISED['out-sup-space'] = ['SCIIE']
 SCIIE_SUPERVISED['out-space'] = [*SCIIE_SUPERVISED['out-sup-space'], *SCIIE_SUPERVISED['out-token-space'], *SCIIE_SUPERVISED['out-sent-space']]
 
 CHEMPROT_SUPERVISED = deepcopy(VBASIC)
-CHEMPROT_SUPERVISED['input-space'] = ['CHEMPROT', 'In-Domain']
+CHEMPROT_SUPERVISED['input-space'] = ['CHEMPROT']
 CHEMPROT_SUPERVISED['out-sup-space'] = ['CHEMPROT']
 CHEMPROT_SUPERVISED['out-space'] = [*CHEMPROT_SUPERVISED['out-sup-space'], *CHEMPROT_SUPERVISED['out-token-space'], *CHEMPROT_SUPERVISED['out-sent-space']]
 
@@ -148,7 +186,7 @@ ALL_CONFIG_CHOICES = [
 	'sbasic', 'basic', 'vbasic', 'vbasic1', 'with-illegal', 
 	'bert', 'full', 'supervised', 'citation.supervised',
 	'sciie.supervised', 'chemprot.supervised', 'tapt',
-	'hyperpartisan.supervised', 'citation.all'
+	'hyperpartisan.supervised', 'citation.all', 'sciie.all', 'chemprot.all',  'gpt', 'xlnet'
 ]
 
 def get_config(name):
@@ -169,6 +207,10 @@ def get_config(name):
 		config = SUPERVISED
 	elif name == 'tapt':
 		config = TAPT
+	elif name == 'gpt':
+		config = GPT
+	elif name == 'xlnet':
+		config = XLNET
 	elif name == 'bert':
 		config = BERT
 	elif name == 'citation.supervised':
@@ -181,6 +223,10 @@ def get_config(name):
 		config = HYPERPARTISAN_SUPERVISED
 	elif name == 'citation.all':
 		config = CITATION_ALL
+	elif name == 'sciie.all':
+		config = SCIIE_ALL
+	elif name == 'chemprot.all':
+		config = CHEMPROT_ALL
 	assert config is not None, 'Wrong Config name given : {}'.format(name)
 	return config
 

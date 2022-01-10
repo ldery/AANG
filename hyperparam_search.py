@@ -31,6 +31,15 @@ Example Run2 :
 
 
 python hyperparam_search.py -task hyperpartisan -base-spconfig hyperpartisan.supervised -patience 20 -devbsz 8 -grad-accum-steps 8 -exp-name Task-LM+SUPERVISED-W-Retrain -gpu-list "[0, 1]" -do-retrain  -hyperconfig partial
+
+
+
+python hyperparam_search.py -task hyperpartisan -base-spconfig hyperpartisan.supervised -patience 20 -devbsz 8 -grad-accum-steps 8 -exp-name Task-LM+SUPERVISED-W-Retrain -gpu-list "[0, 1]" -do-retrain  -hyperconfig partial
+
+python hyperparam_search.py -task chemprot -base-spconfig xlnet -patience 20 -grad-accum-steps 4 -exp-name XLNET-Baseline-W-Retrain -gpu-list "[0, 1]" -hyperconfig partial_onetask -runthreads
+
+python hyperparam_search.py -task chemprot -base-spconfig chemprot.supervised -patience 20 -grad-accum-steps 8 -exp-name Task-LM+SUPERVISED -gpu-list "[0, 1, 2]" -hyperconfig partial_big -runthreads
+
 '''
 
 def add_hyperparam_options(parser):
@@ -56,7 +65,7 @@ def add_hyperparam_options(parser):
 	parser.add_argument('-logdir', type=str, default='HyperParamLogs')
 	parser.add_argument('-runthreads', action='store_true')
 	parser.add_argument('-gpu-list', type=str)
-	parser.add_argument('-hyperconfig', type=str, default="full", choices=["full", "test", "partial", "partial_big"])
+	parser.add_argument('-hyperconfig', type=str, default="full", choices=CONFIG_NAMES)
 	parser.add_argument('-do-retrain', action='store_true')
 
 
@@ -81,6 +90,7 @@ def has_been_run(fldr):
 	has_saved_model = os.path.exists(os.path.join(fldr, 'modelWAuxTasks.pth'))
 	has_saved_searchOpts =  os.path.exists(os.path.join(fldr, 'searchOpts.pth'))
 	if has_saved_model and has_saved_searchOpts:
+		print('SKIPPING. ALREADY RUN : ', os.path.basename(fldr))
 		return True
 	return False
 

@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 # HYPER_CONFIG = {
 # 		'auxlr': [1.0, 5e-1], # [2.0, 1.0, 5e-1],
 # 		'soptlr': [1e-1, 5e-2],
@@ -7,8 +9,17 @@
 # 		'auxbsz': [256]
 # }
 
-
 HYPER_CONFIG_PARTIAL = {
+		'auxlr': [0.1, 5e-1, 1.0],
+		'soptlr': [1e-1],
+		'classflr': [1e-3, 3e-3],
+		'wfrac': [0.06],
+		'nconf_samp': [3, 6],
+		'primbsz': [128],
+		'auxbsz': [256]
+}
+
+HYPER_CONFIG_HYPERPARTISAN = {
 		'auxlr': [0.1, 5e-1],
 		'soptlr': [1e-1],
 		'classflr': [1e-4, 1e-3, 3e-3],
@@ -17,6 +28,8 @@ HYPER_CONFIG_PARTIAL = {
 		'primbsz': [64],
 		'auxbsz': [128]
 }
+
+
 
 HYPER_CONFIG_PARTIAL_BIG = {
 		'auxlr': [0.1, 5e-1, 1.0],
@@ -27,6 +40,17 @@ HYPER_CONFIG_PARTIAL_BIG = {
 		'primbsz': [128],
 		'auxbsz': [256]
 }
+
+HYPER_CONFIG_PARTIAL_ONETASK = {
+		'auxlr': [0.1],
+		'soptlr': [0.01, 0.1, 5e-1, 1.0],
+		'wfrac': [0.06],
+		'primbsz': [128],
+		'auxbsz': [256]
+}
+# deepcopy(HYPER_CONFIG_PARTIAL_BIG)
+HYPER_CONFIG_PARTIAL_ONETASK['nconf_samp'] = [1]
+HYPER_CONFIG_PARTIAL_ONETASK['classflr'] = [1e-4, 1e-3, 3e-3]
 
 HYPER_CONFIG_FULL = {
 		'auxlr': [0.1, 5e-1, 1.0],
@@ -48,7 +72,12 @@ HYPER_CONFIG_TEST = {
 		'auxbsz': [128]
 }
 
-	
+CONFIG_NAMES = [
+	"full", "test", "partial",
+	"partial_big", "partial_onetask",
+	"partial_hyperpartisan"
+]
+
 def get_hyper_config(config_name):
 	if config_name == 'full':
 		return HYPER_CONFIG_FULL
@@ -56,6 +85,10 @@ def get_hyper_config(config_name):
 		return HYPER_CONFIG_PARTIAL
 	elif config_name == 'partial_big':
 		return HYPER_CONFIG_PARTIAL_BIG
+	elif config_name == 'partial_onetask':
+		return HYPER_CONFIG_PARTIAL_ONETASK
+	elif config_name == 'partial_hyperpartisan':
+		return HYPER_CONFIG_HYPERPARTISAN
 	elif config_name == 'test':
 		return HYPER_CONFIG_TEST
 
