@@ -29,16 +29,24 @@ Example Run2 :
 
 
 
+python hyperparam_search.py -task SemEval2016Task6 -base-spconfig xlnet -patience 20 -grad-accum-steps 1 -exp-name XLNET-Baseline-W-Retrain -gpu-list "[1, 2]" -hyperconfig partial_onetask -runthreads
 
-python hyperparam_search.py -task hyperpartisan -base-spconfig hyperpartisan.supervised -patience 20 -devbsz 8 -grad-accum-steps 8 -exp-name Task-LM+SUPERVISED-W-Retrain -gpu-list "[0, 1]" -do-retrain  -hyperconfig partial
+python hyperparam_search.py -task SemEval2016Task6 -base-spconfig gpt   -patience 20 -grad-accum-steps 1 -exp-name GPT-Baseline-W-Retrain -gpu-list "[2, 3]" -hyperconfig partial_onetask -runthreads
 
 
 
-python hyperparam_search.py -task hyperpartisan -base-spconfig hyperpartisan.supervised -patience 20 -devbsz 8 -grad-accum-steps 8 -exp-name Task-LM+SUPERVISED-W-Retrain -gpu-list "[0, 1]" -do-retrain  -hyperconfig partial
 
-python hyperparam_search.py -task chemprot -base-spconfig xlnet -patience 20 -grad-accum-steps 4 -exp-name XLNET-Baseline-W-Retrain -gpu-list "[0, 1]" -hyperconfig partial_onetask -runthreads
+python hyperparam_search.py -task citation_intent -base-spconfig jointbasic -patience 20 -grad-accum-steps 4 -exp-name JOINT-BASIC -gpu-list "[2, 3]" -hyperconfig temp_rerun -runthreads
 
-python hyperparam_search.py -task chemprot -base-spconfig chemprot.supervised -patience 20 -grad-accum-steps 8 -exp-name Task-LM+SUPERVISED -gpu-list "[0, 1, 2]" -hyperconfig partial_big -runthreads
+python hyperparam_search.py -task citation_intent -base-spconfig vbasic1 -patience 20 -grad-accum-steps 4 -exp-name Task-LM-W-Retrain -gpu-list "[3]" -hyperconfig temp_rerun -runthreads
+
+
+python hyperparam_search.py -task SemEval2016Task6 -base-spconfig jointbasic -patience 20 -grad-accum-steps 1 -exp-name JOINT-BASIC -gpu-list "[0,1,2,3]" -hyperconfig partial_big -runthreads
+
+python hyperparam_search.py -task SemEval2016Task6 -base-spconfig SemEval2016Task6.supervised -patience 20 -grad-accum-steps 1 -exp-name  Task-LM+SUPERVISED-W-Retrain -gpu-list "[0, 1, 2, 3]" -hyperconfig partial_big_1
+
+
+
 
 '''
 
@@ -78,6 +86,10 @@ def get_task_info(args):
 		return CHEMPROT
 	elif args.task == 'hyperpartisan':
 		return HYPERPARTISAN
+	elif args.task == 'SemEval2016Task6':
+		return SemEval2016Task6
+	elif args.task == 'PERSPECTRUM':
+		return PERSPECTRUM
 
 def get_all_hyperconfigs(config_dict):
 	all_hypers = []

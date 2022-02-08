@@ -38,6 +38,22 @@ XLNET = {
 XLNET['out-space'] = [*XLNET['out-token-space'], *XLNET['out-sent-space']]
 
 
+JOINTBASIC = {
+	'input-space' : ['Task'],
+	'input-tform-space': ['None', 'BERT'],
+	'rep-tform-space' : ['None', 'Random-Factorized', 'Left-To-Right'],
+	'out-token-space' : ['DENOISE'],
+	'out-sent-space': [],
+	'illegal_pairs': [
+						('None', 'None'),
+						('BERT', 'Random-Factorized'),
+						('BERT', 'Left-To-Right'),
+					 ]
+}
+JOINTBASIC['out-space'] = [*JOINTBASIC['out-token-space'], *JOINTBASIC['out-sent-space']]
+
+
+
 VBASIC = {
 	'input-space' : ['Task', 'In-Domain'],
 	'input-tform-space': ['None', 'Replace', 'Mask'],
@@ -122,6 +138,16 @@ HYPERPARTISAN_SUPERVISED['input-space'] = ['HYPERPARTISAN']
 HYPERPARTISAN_SUPERVISED['out-sup-space'] = ['HYPERPARTISAN']
 HYPERPARTISAN_SUPERVISED['out-space'] = [*HYPERPARTISAN_SUPERVISED['out-sup-space'], *HYPERPARTISAN_SUPERVISED['out-token-space'], *HYPERPARTISAN_SUPERVISED['out-sent-space']]
 
+SEMEVAL_SUPERVISED = deepcopy(VBASIC)
+SEMEVAL_SUPERVISED['input-space'] = ['SemEval2016Task6']
+SEMEVAL_SUPERVISED['out-sup-space'] = ['SemEval2016Task6']
+SEMEVAL_SUPERVISED['out-space'] = [*SEMEVAL_SUPERVISED['out-sup-space'], *SEMEVAL_SUPERVISED['out-token-space'], *SEMEVAL_SUPERVISED['out-sent-space']]
+
+PERSPECTRUM_SUPERVISED = deepcopy(VBASIC)
+PERSPECTRUM_SUPERVISED['input-space'] = ['PERSPECTRUM']
+PERSPECTRUM_SUPERVISED['out-sup-space'] = ['PERSPECTRUM']
+PERSPECTRUM_SUPERVISED['out-space'] = [*PERSPECTRUM_SUPERVISED['out-sup-space'], *PERSPECTRUM_SUPERVISED['out-token-space'], *PERSPECTRUM_SUPERVISED['out-sent-space']]
+
 
 BASIC = {
 	'input-space' : ['Task'],
@@ -180,13 +206,16 @@ ALL_SUPERVISED_OUTPUTS = {
 	'SCIIE': 7,
 	'CHEMPROT': 13,
 	'HYPERPARTISAN': 2,
+	'SemEval2016Task6': 3,
+	'PERSPECTRUM': 2
 }
 
 ALL_CONFIG_CHOICES = [
 	'sbasic', 'basic', 'vbasic', 'vbasic1', 'with-illegal', 
 	'bert', 'full', 'supervised', 'citation.supervised',
 	'sciie.supervised', 'chemprot.supervised', 'tapt',
-	'hyperpartisan.supervised', 'citation.all', 'sciie.all', 'chemprot.all',  'gpt', 'xlnet'
+	'hyperpartisan.supervised', 'citation.all', 'sciie.all', 'SemEval2016Task6.supervised', 'chemprot.all',  'gpt', 'xlnet', 'jointbasic',
+	'PERSPECTRUM.supervised'
 ]
 
 def get_config(name):
@@ -213,6 +242,8 @@ def get_config(name):
 		config = XLNET
 	elif name == 'bert':
 		config = BERT
+	elif name == 'jointbasic':
+		config = JOINTBASIC
 	elif name == 'citation.supervised':
 		config = CITATION_SUPERVISED
 	elif name == 'sciie.supervised':
@@ -227,6 +258,10 @@ def get_config(name):
 		config = SCIIE_ALL
 	elif name == 'chemprot.all':
 		config = CHEMPROT_ALL
+	elif name == 'SemEval2016Task6.supervised':
+		config = SEMEVAL_SUPERVISED
+	elif name == 'PERSPECTRUM.supervised':
+		config = PERSPECTRUM_SUPERVISED
 	assert config is not None, 'Wrong Config name given : {}'.format(name)
 	return config
 
@@ -252,6 +287,8 @@ def get_illegal_sets(config):
 		ill_ds_out = [(a, b) for a in config['input-space'] for b in config['out-sup-space'] if a != b]
 		illegal_pairs.extend(ill_rep)
 		illegal_pairs.extend(ill_ds_out)
+	if 'illegal_pairs' in config:
+		illegal_pairs.extend(config['illegal_pairs'])
 	return illegal_pairs
 
 def test_valid_config_name():

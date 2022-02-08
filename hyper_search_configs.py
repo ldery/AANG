@@ -24,22 +24,45 @@ HYPER_CONFIG_HYPERPARTISAN = {
 		'soptlr': [1e-1],
 		'classflr': [1e-4, 1e-3, 3e-3],
 		'wfrac': [0.06],
-		'nconf_samp': [3, 6],
+		'nconf_samp': [1, 3],
 		'primbsz': [64],
 		'auxbsz': [128]
 }
 
-
-
+# LUCIO - REMEMBER TO RESET THIS ONCE YOU ARE DONE EXPLORING
 HYPER_CONFIG_PARTIAL_BIG = {
 		'auxlr': [0.1, 5e-1, 1.0],
-		'soptlr': [1e-1],
-		'classflr': [1e-3, 3e-3],
+		'soptlr': [1e-1, 1.0],
+		'classflr': [5e-5, 1e-4, 1e-3],
 		'wfrac': [0.06],
-		'nconf_samp': [3, 6],
+		'nconf_samp': [3],
 		'primbsz': [128],
 		'auxbsz': [256]
 }
+
+
+HYPER_CONFIG_PARTIAL_BIG_1 = {
+		'auxlr': [0.1, 5e-1, 1.0],
+		'soptlr': [1e-1],
+		'classflr': [5e-5, 1e-4, 1e-3],
+		'wfrac': [0.06],
+		'nconf_samp': [12, 9],
+		'primbsz': [128],
+		'auxbsz': [256]
+}
+
+
+TEMP_RERUN = {
+	'auxlr': [0.1, 5e-1, 1.0],
+	'soptlr': [1e-1],
+	'classflr': [1e-4],
+	'wfrac': [0.06],
+	'nconf_samp': [1, 3],
+	'primbsz': [128],
+	'auxbsz': [256]
+}
+
+
 
 HYPER_CONFIG_PARTIAL_ONETASK = {
 		'auxlr': [0.1],
@@ -50,7 +73,18 @@ HYPER_CONFIG_PARTIAL_ONETASK = {
 }
 # deepcopy(HYPER_CONFIG_PARTIAL_BIG)
 HYPER_CONFIG_PARTIAL_ONETASK['nconf_samp'] = [1]
-HYPER_CONFIG_PARTIAL_ONETASK['classflr'] = [1e-4, 1e-3, 3e-3]
+HYPER_CONFIG_PARTIAL_ONETASK['classflr'] = [5e-5, 1e-4, 1e-3]
+
+HYPER_CONFIG_PARTIAL_ONETASK_TEMP = {
+	'auxlr': [0.1],
+	'soptlr': [0.01, 0.1, 5e-1, 1.0],
+	'classflr': [5e-6, 5e-5],
+	'nconf_samp': [1],
+	'primbsz': [128],
+	'auxbsz': [256]
+	
+}
+
 
 HYPER_CONFIG_FULL = {
 		'auxlr': [0.1, 5e-1, 1.0],
@@ -63,19 +97,20 @@ HYPER_CONFIG_FULL = {
 
 
 HYPER_CONFIG_TEST = {
-		'auxlr': [0.1, 5e-1],
+		'auxlr': [0.1],
 		'soptlr': [1e-1],
-		'classflr': [1e-4, 1e-3, 3e-3],
+		'classflr': [3e-3],
 		'wfrac': [0.06],
-		'nconf_samp': [3, 6],
-		'primbsz': [64],
-		'auxbsz': [128]
+		'nconf_samp': [1],
+		'primbsz': [128],
+		'auxbsz': [256]
 }
 
 CONFIG_NAMES = [
 	"full", "test", "partial",
 	"partial_big", "partial_onetask",
-	"partial_hyperpartisan"
+	"partial_hyperpartisan", "partial_big_1", "temp_rerun",
+	'partial_onetask_temp'
 ]
 
 def get_hyper_config(config_name):
@@ -85,12 +120,16 @@ def get_hyper_config(config_name):
 		return HYPER_CONFIG_PARTIAL
 	elif config_name == 'partial_big':
 		return HYPER_CONFIG_PARTIAL_BIG
+	elif config_name == 'partial_big_1':
+		return HYPER_CONFIG_PARTIAL_BIG_1
 	elif config_name == 'partial_onetask':
 		return HYPER_CONFIG_PARTIAL_ONETASK
 	elif config_name == 'partial_hyperpartisan':
 		return HYPER_CONFIG_HYPERPARTISAN
-	elif config_name == 'test':
-		return HYPER_CONFIG_TEST
+	elif config_name == 'temp_rerun':
+		return TEMP_RERUN
+	elif config_name == 'partial_onetask_temp':
+		return HYPER_CONFIG_PARTIAL_ONETASK_TEMP
 
 CITATION_INTENT = {
 	'primtaskid': 'citation_intent',
@@ -132,6 +171,7 @@ HYPERPARTISAN = {
 	'domaindata': '/home/ldery/internship/dsp/datasets/hyperpartisan/domain.10xTAPT.txt',
 	'metric':     'f1',
 }
+
 RCT = {
 	'primtaskid': 'rct',
 	'trainfile':  '/home/ldery/internship/dsp/datasets/rct/train.jsonl',
@@ -142,4 +182,22 @@ RCT = {
 	'metric':     'accuracy',
 }
 
+SemEval2016Task6 = {
+	'primtaskid': 'SemEval2016Task6',
+	'trainfile':  '/home/ldery/projects/ml-stance-detection/datasets/SemEval2016Task6/train.jsonl',
+	'devfile':    '/home/ldery/projects/ml-stance-detection/datasets/SemEval2016Task6/dev.jsonl',
+	'testfile':   '/home/ldery/projects/ml-stance-detection/datasets/SemEval2016Task6/test.jsonl',
+	'taskdata':   '/home/ldery/projects/ml-stance-detection/datasets/SemEval2016Task6/train.txt',
+	'domaindata': '/home/ldery/projects/ml-stance-detection/datasets/SemEval2016Task6/train.txt', # Todo [ldery] - change this up
+	'metric':     'accuracy',
+}
 
+PERSPECTRUM = {
+	'primtaskid': 'PERSPECTRUM',
+	'trainfile':  '/home/ldery/projects/ml-stance-detection/datasets/PERSPECTRUM/perspectrum_train.jsonl',
+	'devfile':    '/home/ldery/projects/ml-stance-detection/datasets/PERSPECTRUM/perspectrum_dev.jsonl',
+	'testfile':   '/home/ldery/projects/ml-stance-detection/datasets/PERSPECTRUM/perspectrum_test.jsonl',
+	'taskdata':   '/home/ldery/projects/ml-stance-detection/datasets/PERSPECTRUM/perspectrum_train.txt',
+	'domaindata': '/home/ldery/projects/ml-stance-detection/datasets/PERSPECTRUM/perspectrum_train.txt', # Todo [ldery] - change this up
+	'metric':     'accuracy',
+}

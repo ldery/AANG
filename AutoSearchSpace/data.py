@@ -7,6 +7,7 @@ import numpy as np
 from collections import Counter, defaultdict
 from data_utils import *
 import math
+import pdb
 
 from datasets import load_dataset
 from torch.utils.data import Dataset, DataLoader, RandomSampler, SequentialSampler
@@ -32,6 +33,8 @@ DATA_PATHS = {
 	'CHEMPROT': '/home/ldery/internship/dsp/datasets/chemprot/train.jsonl',
 	'SCIIE':  '/home/ldery/internship/dsp/datasets/sciie/train.jsonl',
 	'HYPERPARTISAN':  '/home/ldery/internship/dsp/datasets/hyperpartisan/train.jsonl',
+	'SemEval2016Task6':  '/home/ldery/internship/dsp/datasets/SemEval2016Task6/train.jsonl',
+	'PERSPECTRUM':'/home/ldery/internship/dsp/datasets/PERSPECTRUM/train.jsonl',
 }
 
 import pdb
@@ -428,7 +431,6 @@ class DataTransformAndItr(object):
 
 # Todo  [ldery] - run some tests to make sure code here is working
 def run_tests():
-	import pdb
 	import argparse
 	from config import Config
 	from transformers import (

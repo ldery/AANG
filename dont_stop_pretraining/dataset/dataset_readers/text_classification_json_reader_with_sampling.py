@@ -129,7 +129,11 @@ class TextClassificationJsonReaderWithSampling(TextClassificationJsonReader):
 				data_file = self._reservoir_sampling(data_file, self._sample)
 			for line in data_file:
 				items = json.loads(line)
-				text = items["text"]
+				if "text" in items:
+					text = items["text"]
+				else:
+					assert ('premise' in items) and ('hypothesis' in items), 'This dataset doesnt have text so needs to have premise and hypothesis.'
+					text = "{} {} {}".format(items["hypothesis"], self._tokenizer._tokenizer.sep_token, items["premise"])
 				label = str(items.get('label'))
 				if text:
 					if raw_text:
@@ -139,7 +143,7 @@ class TextClassificationJsonReaderWithSampling(TextClassificationJsonReader):
 						yield instance
 
 	@overrides
-	def text_to_instance(self, text: str, label: str = None) -> Instance:  # type: ignore
+	def text_to_instance(self, text, label) -> Instance:  # type: ignore
 		"""
 		Parameters
 		----------
