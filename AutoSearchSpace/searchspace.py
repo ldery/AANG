@@ -15,6 +15,7 @@ def add_searchspace_args(parser):
 	parser.add_argument('-use-EG', action='store_true')
 	parser.add_argument('-token_temp', type=float, default=1.0)
 	parser.add_argument('-warmstart-path', type=str, default=None)
+	parser.add_argument('-pure-transform', action='store_true')
 
 
 def create_tensor(shape, init=0.0, requires_grad=True, is_cuda=True):
@@ -29,7 +30,8 @@ import pdb
 class SearchOptions(object):
 	def __init__(
 					self, config, prim_aux_lr, aux_lr, use_EG= False, step_every=1,
-					use_factored_model=True, is_cuda=True, token_temp=1.0, warmstart_path=None
+					use_factored_model=True, is_cuda=True, token_temp=1.0, warmstart_path=None,
+					pure_transform=False
 				):
 		self.config = config  # Store in case
 		self.weight_lr = prim_aux_lr
@@ -37,6 +39,7 @@ class SearchOptions(object):
 		self.weights = {}
 		self.step_every = step_every
 		self.step_counter = 0
+		self.pure_transform = pure_transform 
 
 		num_stages = self.config.num_stages()
 		base_shape = [1 for _ in range(num_stages)]
@@ -98,6 +101,22 @@ class SearchOptions(object):
 	def get_valid_configs(self):
 		return self.valid_configurations
 
+	def get_all_and_out_relative(self, aux_configs):
+		# gather all the likelihoods:
+		values = []
+		stage_name, _ = self.config.get_stage_w_name(3)
+		with torch.no_grad():
+			for conf_ in aux_configs:
+				this_logit = self.weights['all'][conf_[0], conf_[1], conf_[2], conf_[3]]
+				this_logit += (self.weights[stage_name][0, 0, 0, conf_[3]]).item()
+				values.append(this_logit)
+			values = F.softmax(torch.tensor(values), dim=-1)
+			values = values.numpy().tolist()
+			probas = {}
+			for k, v in zip(aux_configs, values):
+				probas[k] = v
+		return probas
+
 	def get_relative_probas(self, stage_id, stage_members, w_names=False):
 		stage_name, stage_dict = self.config.get_stage_w_name(stage_id)
 		if stage_members is None:
@@ -108,11 +127,6 @@ class SearchOptions(object):
 				this_weights = this_weights.unsqueeze(0)
 			this_weights = this_weights.cpu().numpy()
 			values = np.array([this_weights[id_] for id_ in stage_members])
-			if stage_id == 1 and len(stage_members) > 1: # This is a hack [fix - ldery]
-				# We want to add ['None', 'Replace', 'Mask']
-				bias = np.array([0, 0, 2.0794]) * self.tau
-				bias = np.array([bias[id_] for id_ in stage_members])
-				values = (values + bias) / self.tau
 			probas = F.softmax(torch.tensor(list(values)), dim=-1)
 		if not w_names:
 			return probas
@@ -122,6 +136,24 @@ class SearchOptions(object):
 			for k, v in stage_dict.items():
 				proba_dict[v] = probas[k]
 			return proba_dict
+	
+	def get_bert_relative(self, stage_id, tform_name, tform_id):
+		stage_name, stage_dict = self.config.get_stage_w_name(stage_id)
+		with torch.no_grad():
+			if self.pure_transform:
+				bias_ = {'None': float('-inf'), 'Replace': float('-inf'), 'Mask':float('-inf')}
+				bias_[tform_name] = self.tau
+			else:
+				this_weights = (self.weights[stage_name]).squeeze().cpu().numpy()
+				# We want to add ['None'=0.1, 'Replace'=0.1, 'Mask'=0.8] as a bias
+				bias_ = {'None': 0, 'Replace': 0, 'Mask': 2.0794 * self.tau}
+				bias_[tform_name] = bias_[tform_name] + this_weights[tform_id]
+			values = np.array(list(bias_.values())) / self.tau
+			probas = F.softmax(torch.tensor(list(values)), dim=-1).numpy().tolist()
+			proba_dict = {}
+			for k, v in zip(bias_.keys(), probas):
+				proba_dict[k] = v
+		return proba_dict
 
 	def get_config_human_readable(self, config):
 		name_ = ''
@@ -162,7 +194,6 @@ class SearchOptions(object):
 
 	def get_weighttensor_wgrad(self, softmax=True):
 		aux_config_tensor = sum([self.weights[name] for name in self.stage_order])
-
 		full_ = torch.cat((self.prim_weight, self.aux_weight))
 		if softmax:
 			# Compute Normalization over all entries

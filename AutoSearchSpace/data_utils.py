@@ -4,6 +4,8 @@ import numpy as np
 from torch.nn.utils.rnn import pad_sequence as torch_pad_sequence
 import pdb
 
+EPSILON = 1E-8
+
 def pad_sequence(all_egs, pad_token_id):
 	if pad_token_id is None:
 		return torch_pad_sequence(all_egs, batch_first=True)
@@ -55,7 +57,7 @@ def mask_tokens(inputs, tokenizer, proba, token_proba=None):
 		if tk_prob_is_none:
 			replace_proba = 0.5
 		elif 'None' in token_proba:
-			replace_proba = (token_proba['Replace'] / (token_proba['Replace'] + token_proba['None']))
+			replace_proba = token_proba['Replace'] if token_proba['Replace'] == 0 else (token_proba['Replace'] / (token_proba['Replace'] + token_proba['None']))
 		else:
 			replace_proba = token_proba['Replace']
 

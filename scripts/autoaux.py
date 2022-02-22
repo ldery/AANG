@@ -178,7 +178,7 @@ def auto_auxiliary(args):
 	# Create the search options object
 	searchOpts = SearchOptions(
 									autoloss_config, args.prim_aux_lr, args.auxiliaries_lr, use_EG=args.use_EG, step_every=args.step_meta_every,
-									use_factored_model=args.use_factored_model, is_cuda=True, token_temp=args.token_temp, warmstart_path=args.warmstart_path
+									use_factored_model=args.use_factored_model, is_cuda=True, token_temp=args.token_temp, warmstart_path=args.warmstart_path, pure_transform=args.pure_transform
 								)
 
 	# enumerate the valid loss configs and get iterators for each loss type
@@ -334,7 +334,7 @@ def auto_auxiliary(args):
 
 			# This does an automatic filling of the gradients. Accumulates the gradients
 			try:
-				wrapper_model.get_grads_with_auxiliaries(aggregate_data, searchOpts)
+				wrapper_model.get_grads_with_auxiliaries(aggregate_data, searchOpts, dtform_and_itr.train_batch_size)
 			except Exception as e:
 				print(' | Experienced a runtime error')
 				torch.cuda.empty_cache()

@@ -29,11 +29,11 @@ HYPER_CONFIG_HYPERPARTISAN = {
 		'auxbsz': [128]
 }
 
-# LUCIO - REMEMBER TO RESET THIS ONCE YOU ARE DONE EXPLORING
+
 HYPER_CONFIG_PARTIAL_BIG = {
 		'auxlr': [0.1, 5e-1, 1.0],
-		'soptlr': [1e-1, 1.0],
-		'classflr': [5e-5, 1e-4, 1e-3],
+		'soptlr': [0.1, 1.0],
+		'classflr': [1e-3, 1e-4], #[5e-5, 1e-4, 1e-3],
 		'wfrac': [0.06],
 		'nconf_samp': [3],
 		'primbsz': [128],
@@ -42,11 +42,11 @@ HYPER_CONFIG_PARTIAL_BIG = {
 
 
 HYPER_CONFIG_PARTIAL_BIG_1 = {
-		'auxlr': [0.1, 5e-1, 1.0],
-		'soptlr': [1e-1],
-		'classflr': [5e-5, 1e-4, 1e-3],
+		'auxlr': [0.5], #[0.1, 5e-1, 1.0],
+		'soptlr': [0.1], #[1e-1, 1.0],
+		'classflr': [1e-3, 1e-4], #[5e-5, 1e-4, 1e-3],
 		'wfrac': [0.06],
-		'nconf_samp': [12, 9],
+		'nconf_samp': [6, 9, 12],
 		'primbsz': [128],
 		'auxbsz': [256]
 }

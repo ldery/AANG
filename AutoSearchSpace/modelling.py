@@ -614,7 +614,7 @@ class ModelWithAuxTasks(AutoModel):
 				p.grad.add_(g * scaling)
 
 	# At the end of this, all the model gradients should be populated appropriately 
-	def get_grads_with_auxiliaries(self, aux_config_w_batch, searchOpts):
+	def get_grads_with_auxiliaries(self, aux_config_w_batch, searchOpts, total_batch_size):
 		# Todo [Try to do a step through for this code to determine if things are working properly]
 		this_head = None
 		if not hasattr(self, 'body_params_end'):
@@ -628,16 +628,17 @@ class ModelWithAuxTasks(AutoModel):
 		
 		# Get the task weighting parameters
 		all_aux_weights, prim_weight, aux_weight = searchOpts.get_weighttensor_nograd()
+# 		assert all_aux_weights.sum().item() == 1.0, 'all_aux_weights must sum to 1 at all times: {}'.format(all_aux_weights.sum().item())
 		all_aux_weights_raw, prim_raw, aux_raw = searchOpts.get_weighttensor_nograd(softmax=False)
 
-		# Do stuff for the primary task
+		# Get all the relevant primary task info
 		loss_config = self.primary_task_info['prim_task_id']
 		sent_dict, labels = self.get_classifier_samples(self.datasets['train'], self.batch_sz)
 		prim_batch = {'input':sent_dict , 'output':labels, 'rep_mask': None}
-
 		prim_out, task_head = self.run_task(loss_config, prim_batch)
+
+		# Get and Apply the calculated gradients
 		prim_grads = self.compute_task_weight_gradients(prim_out['loss'], task_head, dev_info, loss_config, searchOpts, is_prim=True)
-		# Apply the calculated gradients
 		prim_scaling = prim_weight / self.grad_accum_factor
 		self.apply_gradients(prim_grads, task_head.parameters(), scaling=prim_scaling)
 		self.config_losses_and_weights[loss_config].append((prim_out['loss'].item(), prim_weight.item(), prim_raw.item()))
@@ -645,6 +646,11 @@ class ModelWithAuxTasks(AutoModel):
 		# Do stuff with the auxiliary tasks. We are assuming that batches with the same representation are grouped together
 		sum_of_aux_grads = [torch.zeros_like(x) for x in self.base_model.parameters()][:self.body_params_end]
 		aux_total_loss, num_aux, all_aux_pts = 0, 0, 0
+
+		# Get all the auxiliary configurations
+		all_aux_configs = [k for b_, conf_ in aux_config_w_batch for k, v in conf_.items()]
+		# Out relative because we do not further split the data based on the output since this would require too many samples.
+		all_aux_probas = searchOpts.get_all_and_out_relative(all_aux_configs)
 		for batch, config_dict in aux_config_w_batch:
 			for k, v in batch.items():
 				if isinstance(v, torch.Tensor):
@@ -661,6 +667,7 @@ class ModelWithAuxTasks(AutoModel):
 					if  batch['input'].shape[0] !=  batch['output'].shape[0]:
 						print('There is a shape mis-match and this should not happen')
 						pdb.set_trace()
+
 				task_out, task_head = self.run_task(task_id, batch, embedded_text=embedded_text)
 
 				is_not_last = config_idx != (len(config_dict) - 1)
@@ -681,7 +688,9 @@ class ModelWithAuxTasks(AutoModel):
 
 				# Now back-prop
 				with torch.no_grad():
-					aux_scaling = ((task_out['loss_full'].mean() / task_out['loss']) * (aux_weight / self.grad_accum_factor)).item()
+					aux_scaling = batch['input'].shape[0]/ (total_batch_size * 1.0)  # Weighting based on non-(output and task-unique) weightings 
+					aux_scaling = aux_scaling * (aux_weight / self.grad_accum_factor).item()
+					aux_scaling *= all_aux_probas[aux_loss_config]  # apply the likelihood of an independent loss and output
 					aux_scaling = 0.0 if task_out['loss'] == 0 else aux_scaling
 				self.apply_gradients(aux_grads, task_head.parameters(), scaling=aux_scaling)
 

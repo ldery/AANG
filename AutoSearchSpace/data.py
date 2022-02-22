@@ -362,58 +362,78 @@ class DataTransformAndItr(object):
 		else:
 			raise ValueError('Illegal value for output transform : {}'.format(self.output_type))
 
-	def get_data(self, sample_configs, searchOpts, representation_tform):
+	def get_data(self, sample_configs, searchOpts, rep_tform):
 		aggregated_data = []
-		# compute dataset marginals
+		# compute config marginals
 		rep_tforms = np.unique([config[2] for config in sample_configs])
 		rep_probas = searchOpts.get_relative_probas(2, rep_tforms)
+
 		for rep_idx, rep_id in enumerate(rep_tforms):
 			try:
 				num_samples = math.ceil(self.train_batch_size * rep_probas[rep_idx].item())
 			except:
-				assert False, 'There has been an issue calculating num_samples. Probably because repre_proba has NaN in it'
+				assert False, 'There has been an issue calculating num_samples. Probably because rep_proba has NaN in it'
 
-			this_configs = [config for config in sample_configs if config[2] == rep_id]
-			datasets = np.unique([config[0] for config in this_configs])
+			this_rep_configs = [config for config in sample_configs if config[2] == rep_id]
+			datasets = np.unique([config[0] for config in this_rep_configs])
 			ds_probas = searchOpts.get_relative_probas(0, datasets)
+
 			for ds_idx, ds_id in enumerate(datasets):
 				n_ds_samples = math.ceil(num_samples * ds_probas[ds_idx].item())
 				ds = self.dataOpts.get_dataset(ds_id)
-
-				this_ds_configs = [config for config in this_configs if config[0] == ds_id]
+				this_ds_configs = [config for config in this_rep_configs if config[0] == ds_id]
 				out_tforms = np.unique([config[-1] for config in this_ds_configs])
 				is_sent_config = np.any([searchOpts.config.is_dot_prod(x) for x in out_tforms])
 				examples = ds.get_samples(n_ds_samples, is_sent_config=is_sent_config)
 
 				token_tforms = np.unique([config[1] for config in this_ds_configs])
 				probas = searchOpts.get_relative_probas(1, token_tforms)
-				_, stage_map = searchOpts.config.get_stage_w_name(1)
-				token_probas = None
-				if not searchOpts.config.isBERTTransform():
-					token_probas = {}
-					for idx, name in stage_map.items():
-						if idx in token_tforms:
-							token_probas[name] = probas[list(token_tforms).index(idx)].item()
 
-				(inputs, labels, masks_for_tformed), supervised_labels = self.collate(examples, token_probas)
-				pad_mask = 1.0 - (inputs.eq(self.dataOpts.tokenizer.pad_token_id)).float()
-				rep_mask = representation_tform.get_rep_tform(inputs.shape, pad_mask, rep_id)
-				batch = {'input': inputs, 'output': None, 'rep_mask': rep_mask}
-				config_dict = {}
-				for config_ in this_ds_configs:
-					token_tform_name = stage_map[config_[1]]
-					task_output = masks_for_tformed[token_tform_name][1] 
-					# We are assuming that the out-type will be the same as the ds-type in the supervised setting
-					is_supervised = searchOpts.config.get_name(3, config_[-1]) == searchOpts.config.get_name(0, config_[0])
-					if is_supervised:
-						assert ds.is_supervised, 'We can only have this setting for supervised data'
-						task_output = supervised_labels
-					out_type = searchOpts.config.get_name(3, config_[-1])
-					dict_ = self.apply_out_tform(out_type, ds, inputs, task_output, examples, is_supervised=is_supervised)
-					config_dict[config_] = dict_['output']
-				aggregated_data.append((batch, config_dict))
-			# Avoiding pre-mature optimization here by aggregating by representation
+				_, stage_map = searchOpts.config.get_stage_w_name(1)
+				tform_names = [stage_map[x] for x in token_tforms]
+
+				for t_idx, (t_name, tform) in enumerate(zip(tform_names, token_tforms)):
+					tform_configs = [config for config in this_ds_configs if config[1] == tform]
+					# Get the number of samples corresponding to this transform
+					this_egs = examples
+					if probas[t_idx] < 1:
+						this_sz = math.ceil(len(examples)*probas[t_idx])
+						if this_sz < 1: # We are skipping this loss because it has been critically downweighted
+							continue
+						this_egs = np.random.choice(examples, size=this_sz, replace=False)
+					token_probas = None
+					if t_name is not 'BERT': 
+						# (not pure-transform) Take a relative approach. We want to learn a delta ontop of bertOp
+						# (pure-transform)     Take an absolute approach. We want pure-samples and not based on bertOp
+						token_probas = searchOpts.get_bert_relative(1, t_name, tform)
+
+					args = tform_configs, this_egs, token_probas, rep_tform, rep_id, searchOpts, ds
+					batch, config_dict = self.process_examples(*args)
+					aggregated_data.append((batch, config_dict))
 		return aggregated_data
+
+	def process_examples(
+			self, this_ds_configs, examples, token_probas, representation_tform, 
+			rep_id, searchOpts, ds
+	):
+		_, stage_map = searchOpts.config.get_stage_w_name(1)
+		(inputs, labels, masks_for_tformed), supervised_labels = self.collate(examples, token_probas)
+		pad_mask = 1.0 - (inputs.eq(self.dataOpts.tokenizer.pad_token_id)).float()
+		rep_mask = representation_tform.get_rep_tform(inputs.shape, pad_mask, rep_id)
+		batch = {'input': inputs, 'output': None, 'rep_mask': rep_mask}
+		config_dict = {}
+		for config_ in this_ds_configs:
+			token_tform_name = stage_map[config_[1]]
+			task_output = masks_for_tformed[token_tform_name][1]
+			# We are assuming that the out-type will be the same as the ds-type in the supervised setting
+			is_supervised = searchOpts.config.get_name(3, config_[-1]) == searchOpts.config.get_name(0, config_[0])
+			if is_supervised:
+				assert ds.is_supervised, 'We can only have this setting for supervised data'
+				task_output = supervised_labels
+			out_type = searchOpts.config.get_name(3, config_[-1])
+			dict_ = self.apply_out_tform(out_type, ds, inputs, task_output, examples, is_supervised=is_supervised)
+			config_dict[config_] = dict_['output']
+		return batch, config_dict
 
 	def collate(self, examples, token_probas):
 		all_egs = [x['sample'] for x in examples]

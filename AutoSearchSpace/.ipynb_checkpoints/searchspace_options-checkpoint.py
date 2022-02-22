@@ -140,6 +140,7 @@ HYPERPARTISAN_SUPERVISED['out-space'] = [*HYPERPARTISAN_SUPERVISED['out-sup-spac
 
 SEMEVAL_SUPERVISED = deepcopy(VBASIC)
 SEMEVAL_SUPERVISED['input-space'] = ['SemEval2016Task6']
+SEMEVAL_SUPERVISED['input-tform-space'].extend(['BERT'])
 SEMEVAL_SUPERVISED['out-sup-space'] = ['SemEval2016Task6']
 SEMEVAL_SUPERVISED['out-space'] = [*SEMEVAL_SUPERVISED['out-sup-space'], *SEMEVAL_SUPERVISED['out-token-space'], *SEMEVAL_SUPERVISED['out-sent-space']]
 
