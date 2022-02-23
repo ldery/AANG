@@ -40,16 +40,25 @@ HYPER_CONFIG_PARTIAL_BIG = {
 		'auxbsz': [256]
 }
 
-
 HYPER_CONFIG_PARTIAL_BIG_1 = {
-		'auxlr': [0.5], #[0.1, 5e-1, 1.0],
-		'soptlr': [0.1], #[1e-1, 1.0],
-		'classflr': [1e-3, 1e-4], #[5e-5, 1e-4, 1e-3],
+		'auxlr': [1.0],
+		'soptlr': [1.0],
+		'classflr': [1e-3],
 		'wfrac': [0.06],
-		'nconf_samp': [6, 9, 12],
+		'nconf_samp': [3, 9], #, 9],
 		'primbsz': [128],
 		'auxbsz': [256]
 }
+
+# HYPER_CONFIG_PARTIAL_BIG_1 = {
+# 		'auxlr': [0.1, 0.5], #[0.1, 5e-1, 1.0],
+# 		'soptlr': [0.1], #[1e-1, 1.0],
+# 		'classflr': [1e-3, 1e-4], #[5e-5, 1e-4, 1e-3],
+# 		'wfrac': [0.06],
+# 		'nconf_samp': [3, 6],
+# 		'primbsz': [128],
+# 		'auxbsz': [256]
+# }
 
 
 TEMP_RERUN = {

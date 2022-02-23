@@ -42,10 +42,11 @@ python hyperparam_search.py -task citation_intent -base-spconfig vbasic1 -patien
 
 
 python hyperparam_search.py -task SemEval2016Task6 -base-spconfig jointbasic -patience 20 -grad-accum-steps 1 -exp-name JOINT-BASIC_UPDATED_PT_A600 -gpu-list "[0,1]" -hyperconfig partial_big -pure-transform -runthreads
--do-retrain
+python hyperparam_search.py -task SemEval2016Task6 -base-spconfig tapt -patience 20 -grad-accum-steps 1 -exp-name TAPT_UPDATED_PT_A600 -gpu-list "[0,1]" -hyperconfig partial_onetask -pure-transform -runthreads
 
 
-python hyperparam_search.py -task SemEval2016Task6 -base-spconfig SemEval2016Task6.supervised -patience 20 -grad-accum-steps 1 -exp-name SUPERVISED_WBERT_PT_A600 -gpu-list "[0,1,2,3]" -hyperconfig partial_big_1 -pure-transform -runthreads
+python hyperparam_search.py -task SemEval2016Task6 -base-spconfig SemEval2016Task6.supervised -patience 20 -grad-accum-steps 1 -exp-name SUPERVISED_WBERT_PT_A600 -gpu-list "[0]" -hyperconfig partial_big_1 -pure-transform -runthreads
+
 
 
 python hyperparam_search.py -task SemEval2016Task6 -base-spconfig SemEval2016Task6.supervised -patience 20 -grad-accum-steps 1 -exp-name SUPERVISED_UPDATED -gpu-list "[0,1,2]" -hyperconfig partial_big_1 -runthreads
