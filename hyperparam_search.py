@@ -41,7 +41,7 @@ python hyperparam_search.py -task citation_intent -base-spconfig jointbasic -pat
 python hyperparam_search.py -task citation_intent -base-spconfig vbasic1 -patience 20 -grad-accum-steps 4 -exp-name Task-LM-W-Retrain -gpu-list "[3]" -hyperconfig temp_rerun -runthreads
 
 
-python hyperparam_search.py -task SemEval2016Task6 -base-spconfig jointbasic -patience 20 -grad-accum-steps 1 -exp-name JOINT-BASIC_NPT -gpu-list "[2]" -hyperconfig partial_big -runthreads -pure-transform
+python hyperparam_search.py -task SemEval2016Task6 -base-spconfig jointbasic -patience 20 -grad-accum-steps 2 -iters 300 -exp-name JOINT-BASIC_NSH -gpu-list "[0,1]" -hyperconfig partial_big -runthreads -pure-transform
 
 python hyperparam_search.py -task SemEval2016Task6 -base-spconfig SemEval2016Task6.supervised -patience 20 -grad-accum-steps 1 -exp-name SUPERVISED_NSH -gpu-list "[0,1]" -hyperconfig partial_big_1 -pure-transform -runthreads
 

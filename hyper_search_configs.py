@@ -37,7 +37,7 @@ HYPER_CONFIG_PARTIAL_BIG = {
 		'wfrac': [0.06],
 		'nconf_samp': [3],
 		'primbsz': [128],
-		'auxbsz': [256]
+		'auxbsz': [512]
 }
 
 HYPER_CONFIG_PARTIAL_BIG_1 = {
@@ -45,7 +45,7 @@ HYPER_CONFIG_PARTIAL_BIG_1 = {
 		'soptlr': [0.01], #, 0.1, 1.0],
 		'classflr': [1e-3], #, 1e-4, 1e-3],
 		'wfrac': [0.06],
-		'nconf_samp': [3],
+		'nconf_samp': [6],
 		'primbsz': [128],
 		'auxbsz': [256]
 }
