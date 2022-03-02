@@ -66,7 +66,7 @@ VBASIC['out-space'] = [*VBASIC['out-token-space'], *VBASIC['out-sent-space']]
 
 VBASIC1 = {
 	'input-space' : ['Task'],
-	'input-tform-space': ['None', 'Replace', 'Mask'],
+	'input-tform-space': ['None', 'Replace', 'Mask', 'BERT'],
 	'rep-tform-space' : ['None', 'Left-To-Right', 'Right-To-Left', 'Random-Factorized'],
 	'out-token-space' : ['DENOISE'],
 	'out-sent-space': [],

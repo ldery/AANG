@@ -190,7 +190,7 @@ class ModelWithAuxTasks(AutoModel):
 		self.share_output_heads = share_output_heads
 		self.setup_heads(searchOpts, dropout, embedding_dim, num_layers, ff_multiplier)
 		self.batch_sz = batch_sz
-		self.max_norm = 1.0
+		self.max_norm = 10.0
 		self.max_seq_len = max_seq_len
 		self.grad_accum_factor = grad_accum_factor
 		# Save grads of auxiliary losses
@@ -743,8 +743,17 @@ class ModelWithAuxTasks(AutoModel):
 
 		# Calcute and save the cosine similarity between tasks
 		cos_sim = dot_prod(dev_head_grads, this_grads, ppdp=per_param_dp)
-		cos_sim = (cos_sim / (dev_norm * task_norm)) 
+		cos_sim = (cos_sim / (dev_norm * task_norm))
 		self.weight_stats[task_desc].append((dev_norm.item(), task_norm.item(), cos_sim  / self.grad_accum_factor))
+
+
+		# Now clip the gradients to a maximum norm
+		if task_norm > self.max_norm:
+			ratio = self.max_norm / (task_norm + 1e-8)
+			with torch.no_grad():
+				for grad_ in gradients[:self.body_params_end]:
+					if grad_ is not None:
+						grad_.mul_(ratio)
 
 		# Save the cosine similarity as the gradient
 		cos_sim = cos_sim / self.grad_accum_factor

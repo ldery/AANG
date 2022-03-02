@@ -107,7 +107,7 @@ class SearchOptions(object):
 		stage_name, _ = self.config.get_stage_w_name(3)
 		with torch.no_grad():
 			for conf_ in aux_configs:
-				this_logit = self.weights['all'][conf_[0], conf_[1], conf_[2], conf_[3]]
+				this_logit = (self.weights['all'][conf_[0], conf_[1], conf_[2], conf_[3]]).item()
 				this_logit += (self.weights[stage_name][0, 0, 0, conf_[3]]).item()
 				values.append(this_logit)
 			values = F.softmax(torch.tensor(values), dim=-1)

@@ -31,9 +31,9 @@ HYPER_CONFIG_HYPERPARTISAN = {
 
 
 HYPER_CONFIG_PARTIAL_BIG = {
-		'auxlr': [0.1, 5e-1, 1.0],
-		'soptlr': [0.1, 1.0],
-		'classflr': [1e-3, 1e-4], #[5e-5, 1e-4, 1e-3],
+		'auxlr': [0.1, 1.0], #[0.1, 1.0],
+		'soptlr': [0.01], #, 0.1, 1.0],
+		'classflr': [1e-3], #, 1e-4, 1e-3],
 		'wfrac': [0.06],
 		'nconf_samp': [3],
 		'primbsz': [128],
@@ -41,24 +41,14 @@ HYPER_CONFIG_PARTIAL_BIG = {
 }
 
 HYPER_CONFIG_PARTIAL_BIG_1 = {
-		'auxlr': [1.0],
-		'soptlr': [1.0],
-		'classflr': [1e-3],
+		'auxlr': [0.1, 1.0], #[0.1, 1.0],
+		'soptlr': [0.01], #, 0.1, 1.0],
+		'classflr': [1e-3], #, 1e-4, 1e-3],
 		'wfrac': [0.06],
-		'nconf_samp': [3, 9], #, 9],
+		'nconf_samp': [3],
 		'primbsz': [128],
 		'auxbsz': [256]
 }
-
-# HYPER_CONFIG_PARTIAL_BIG_1 = {
-# 		'auxlr': [0.1, 0.5], #[0.1, 5e-1, 1.0],
-# 		'soptlr': [0.1], #[1e-1, 1.0],
-# 		'classflr': [1e-3, 1e-4], #[5e-5, 1e-4, 1e-3],
-# 		'wfrac': [0.06],
-# 		'nconf_samp': [3, 6],
-# 		'primbsz': [128],
-# 		'auxbsz': [256]
-# }
 
 
 TEMP_RERUN = {
@@ -75,14 +65,14 @@ TEMP_RERUN = {
 
 HYPER_CONFIG_PARTIAL_ONETASK = {
 		'auxlr': [0.1],
-		'soptlr': [0.01, 0.1, 5e-1, 1.0],
+		'soptlr': [0.01, 0.1, 1.0],
 		'wfrac': [0.06],
 		'primbsz': [128],
 		'auxbsz': [256]
 }
 # deepcopy(HYPER_CONFIG_PARTIAL_BIG)
 HYPER_CONFIG_PARTIAL_ONETASK['nconf_samp'] = [1]
-HYPER_CONFIG_PARTIAL_ONETASK['classflr'] = [5e-5, 1e-4, 1e-3]
+HYPER_CONFIG_PARTIAL_ONETASK['classflr'] = [1e-3, 1e-4, 5e-5]
 
 HYPER_CONFIG_PARTIAL_ONETASK_TEMP = {
 	'auxlr': [0.1],

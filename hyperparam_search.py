@@ -41,11 +41,12 @@ python hyperparam_search.py -task citation_intent -base-spconfig jointbasic -pat
 python hyperparam_search.py -task citation_intent -base-spconfig vbasic1 -patience 20 -grad-accum-steps 4 -exp-name Task-LM-W-Retrain -gpu-list "[3]" -hyperconfig temp_rerun -runthreads
 
 
-python hyperparam_search.py -task SemEval2016Task6 -base-spconfig jointbasic -patience 20 -grad-accum-steps 1 -exp-name JOINT-BASIC_UPDATED_PT_A600 -gpu-list "[0,1]" -hyperconfig partial_big -pure-transform -runthreads
-python hyperparam_search.py -task SemEval2016Task6 -base-spconfig tapt -patience 20 -grad-accum-steps 1 -exp-name TAPT_UPDATED_PT_A600 -gpu-list "[0,1]" -hyperconfig partial_onetask -pure-transform -runthreads
+python hyperparam_search.py -task SemEval2016Task6 -base-spconfig jointbasic -patience 20 -grad-accum-steps 1 -exp-name JOINT-BASIC_NPT -gpu-list "[2]" -hyperconfig partial_big -runthreads -pure-transform
 
+python hyperparam_search.py -task SemEval2016Task6 -base-spconfig SemEval2016Task6.supervised -patience 20 -grad-accum-steps 1 -exp-name SUPERVISED_NSH -gpu-list "[0,1]" -hyperconfig partial_big_1 -pure-transform -runthreads
 
-python hyperparam_search.py -task SemEval2016Task6 -base-spconfig SemEval2016Task6.supervised -patience 20 -grad-accum-steps 1 -exp-name SUPERVISED_WBERT_PT_A600 -gpu-list "[0]" -hyperconfig partial_big_1 -pure-transform -runthreads
+python hyperparam_search.py -task SemEval2016Task6 -base-spconfig tapt -patience 20 -grad-accum-steps 1 -exp-name TAPT -gpu-list "[0, 1, 2]" -hyperconfig partial_onetask -pure-transform -runthreads
+
 
 
 
@@ -132,7 +133,7 @@ def get_base_runstring(args, gpuid, config, task_info):
 		run_command = None
 		if not has_been_run(outputdir):
 			warmup_frac = args.warmup_frac if 'wfrac' not in task_info else task_info['wfrac']
-			run_command = "CUDA_VISIBLE_DEVICES={} python -u -m scripts.autoaux --prim-task-id {} --train_data_file {} --dev_data_file {} --test_data_file {} --output_dir {} --model_type roberta-base --model_name_or_path roberta-base  --tokenizer_name roberta-base --per_gpu_train_batch_size {}  --gradient_accumulation_steps {} --do_train --learning_rate {} --block_size 512 --logging_steps 10000 --classf_lr {} --classf_patience {} --num_train_epochs {} --classifier_dropout {} --overwrite_output_dir --classf_iter_batchsz  {} --classf_ft_lr 1e-6 --classf_max_seq_len 512 --seed {}  --classf_dev_wd {} --classf_dev_lr {} -searchspace-config {} -task-data {} -in-domain-data {} -num-config-samples {} --dev_batch_sz {} --eval_every 30 -prim-aux-lr {} -auxiliaries-lr {} --classf_warmup_frac {} --classf_wd {} --base_wd {} --dev_fit_iters {} -step-meta-every {} -use-factored-model -token_temp {} --share-output-heads --classf-metric {} {} &> {}".format(gpuid, args.task, task_info['trainfile'], task_info['devfile'], task_info['testfile'], outputdir, pergpubsz, args.grad_accum_steps, args.lr, config['classflr'], args.patience, args.iters, args.classfdp, primiterbsz, seed, args.dev_wd, args.devlr, args.base_spconfig, task_info['taskdata'], task_info['domaindata'], config['nconf_samp'], args.devbsz, config['soptlr'], config['auxlr'], warmup_frac, args.classf_wd, args.base_wd, args.dev_ft_iters, args.step_meta_every, args.tokentform_temp, task_info['metric'], pure_transform_str, logfile)
+			run_command = "CUDA_VISIBLE_DEVICES={} python -u -m scripts.autoaux --prim-task-id {} --train_data_file {} --dev_data_file {} --test_data_file {} --output_dir {} --model_type roberta-base --model_name_or_path roberta-base  --tokenizer_name roberta-base --per_gpu_train_batch_size {}  --gradient_accumulation_steps {} --do_train --learning_rate {} --block_size 512 --logging_steps 10000 --classf_lr {} --classf_patience {} --num_train_epochs {} --classifier_dropout {} --overwrite_output_dir --classf_iter_batchsz  {} --classf_ft_lr 1e-6 --classf_max_seq_len 512 --seed {}  --classf_dev_wd {} --classf_dev_lr {} -searchspace-config {} -task-data {} -in-domain-data {} -num-config-samples {} --dev_batch_sz {} --eval_every 30 -prim-aux-lr {} -auxiliaries-lr {} --classf_warmup_frac {} --classf_wd {} --base_wd {} --dev_fit_iters {} -step-meta-every {} -use-factored-model -token_temp {}  --classf-metric {} {} &> {}".format(gpuid, args.task, task_info['trainfile'], task_info['devfile'], task_info['testfile'], outputdir, pergpubsz, args.grad_accum_steps, args.lr, config['classflr'], args.patience, args.iters, args.classfdp, primiterbsz, seed, args.dev_wd, args.devlr, args.base_spconfig, task_info['taskdata'], task_info['domaindata'], config['nconf_samp'], args.devbsz, config['soptlr'], config['auxlr'], warmup_frac, args.classf_wd, args.base_wd, args.dev_ft_iters, args.step_meta_every, args.tokentform_temp, task_info['metric'], pure_transform_str, logfile)
 
 		outputdir_retrain = None
 
